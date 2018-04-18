@@ -10,11 +10,11 @@ abstract type StiffnessTopOptProblem{dim, T} <: AbstractTopOptProblem end
 ///++++++++++++++++++++++++++++++++++ v
 
 
-struct PointLoadCantilever{dim, T, N, M, CH} <: StiffnessTopOptProblem{dim}
+struct PointLoadCantilever{dim, T, N, M} <: StiffnessTopOptProblem{dim, T}
     rect_grid::RectilinearGrid{dim, T, N, M}
     E::T
     ν::T
-    ch::CH
+    ch::ConstraintHandler{DofHandler{dim, N, T, M}, T}
     force::T
     force_dof::Int
     metadata::Metadata
@@ -47,7 +47,7 @@ end
 
 API:
 ```
-        PointLoadCantilever(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, force) where {dim, T}
+        PointLoadCantilever(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, force) where {dim}
 ```
 
 Example:
@@ -163,7 +163,7 @@ end
 
 API:
 ```
-        HalfMBB(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, force) where {dim, T}
+        HalfMBB(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, force) where {dim}
 ```
 
 Example:
