@@ -59,7 +59,7 @@ search: HalfMBB
 
   API:
 
-          HalfMBB(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, force) where {dim, T}
+          HalfMBB(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, force) where {dim}
 
   Example:
 
