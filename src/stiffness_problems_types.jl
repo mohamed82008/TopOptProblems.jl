@@ -1,4 +1,3 @@
-
 abstract type StiffnessTopOptProblem{dim, T} <: AbstractTopOptProblem end
 
 """
@@ -68,7 +67,7 @@ struct PointLoadCantilever{dim, T, N, M} <: StiffnessTopOptProblem{dim, T}
     ch::ConstraintHandler{DofHandler{dim, N, T, M}, T}
     force::T
     force_dof::Int
-    metadata::Metadata
+#    metadata::Metadata
 end
 
 function PointLoadCantilever(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, force) where {dim}
@@ -85,7 +84,8 @@ function PointLoadCantilever(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, f
     if haskey(rect_grid.grid.facesets, "fixed_all") 
         pop!(rect_grid.grid.facesets, "fixed_all")
     end
-    addfaceset!(rect_grid.grid, "fixed_all", x -> left(rect_grid, x));
+    #addfaceset!(rect_grid.grid, "fixed_all", x -> left(rect_grid, x));
+    addnodeset!(rect_grid.grid, "fixed_all", x -> left(rect_grid, x));
     
     if haskey(rect_grid.grid.nodesets, "down_force") 
         pop!(rect_grid.grid.nodesets, "down_force")
@@ -99,21 +99,24 @@ function PointLoadCantilever(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, f
     
     ch = ConstraintHandler(dh)
 
-    dbc = Dirichlet(:u, getfaceset(rect_grid.grid, "fixed_all"), (x,t) -> zeros(T, dim), collect(1:dim))
+    #dbc = Dirichlet(:u, getfaceset(rect_grid.grid, "fixed_all"), (x,t) -> zeros(T, dim), collect(1:dim))
+    dbc = Dirichlet(:u, getnodeset(rect_grid.grid, "fixed_all"), (x,t) -> zeros(T, dim), collect(1:dim))
     add!(ch, dbc)
     close!(ch)
     t = T(0)
     update!(ch, t)
 
-    metadata = Metadata(dh)
+    #metadata = Metadata(dh)
     
     fnode = Tuple(getnodeset(rect_grid.grid, "down_force"))[1]
-    force_dof = metadata.node_dofs[2, fnode]
+    node_dofs = reshape(ch.dh.node_dofs, ch.dh.ndofs_per_node[], getnnodes(ch.dh.grid))
+    force_dof = node_dofs[2, fnode]
 
     N = nnodespercell(rect_grid)
     M = nfacespercell(rect_grid)
 
-    return PointLoadCantilever{dim, T, N, M}(rect_grid, E, ν, ch, force, force_dof, metadata)
+    #return PointLoadCantilever{dim, T, N, M}(rect_grid, E, ν, ch, force, force_dof, metadata)
+    return PointLoadCantilever{dim, T, N, M}(rect_grid, E, ν, ch, force, force_dof)
 end
 
 """
@@ -184,7 +187,7 @@ struct HalfMBB{dim, T, N, M} <: StiffnessTopOptProblem{dim, T}
     ch::ConstraintHandler{DofHandler{dim, N, T, M}, T}
     force::T
     force_dof::Int
-    metadata::Metadata
+    #metadata::Metadata
 end
 function HalfMBB(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, force) where {dim}
     _T = promote_type(eltype(sizes), typeof(E), typeof(ν), typeof(force))
@@ -197,8 +200,9 @@ function HalfMBB(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, force) where 
 
     if haskey(rect_grid.grid.facesets, "fixed_u1")
         pop!(rect_grid.grid.facesets, "fixed_u1")
-    end        
-    addfaceset!(rect_grid.grid, "fixed_u1", x -> left(rect_grid, x));
+    end
+    #addfaceset!(rect_grid.grid, "fixed_u1", x -> left(rect_grid, x));
+    addnodeset!(rect_grid.grid, "fixed_u1", x -> left(rect_grid, x));
     
     if haskey(rect_grid.grid.nodesets, "fixed_u2")
         pop!(rect_grid.grid.nodesets, "fixed_u2")
@@ -216,7 +220,8 @@ function HalfMBB(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, force) where 
     close!(dh)
     
     ch = ConstraintHandler(dh)
-    dbc1 = Dirichlet(:u, getfaceset(rect_grid.grid, "fixed_u1"), (x,t)->T[0], [1])
+    #dbc1 = Dirichlet(:u, getfaceset(rect_grid.grid, "fixed_u1"), (x,t)->T[0], [1])
+    dbc1 = Dirichlet(:u, getnodeset(rect_grid.grid, "fixed_u1"), (x,t)->T[0], [1])
     add!(ch, dbc1)
     dbc2 = Dirichlet(:u, getnodeset(rect_grid.grid, "fixed_u2"), (x,t)->T[0], [2])
     add!(ch, dbc2)
@@ -225,13 +230,15 @@ function HalfMBB(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, force) where 
     t = T(0)
     update!(ch, t)
 
-    metadata = Metadata(dh)
+    #metadata = Metadata(dh)
 
     fnode = Tuple(getnodeset(rect_grid.grid, "down_force"))[1]
-    force_dof = metadata.node_dofs[2, fnode]
+    node_dofs = reshape(ch.dh.node_dofs, ch.dh.ndofs_per_node[], getnnodes(ch.dh.grid))
+    force_dof = node_dofs[2, fnode]
 
     N = nnodespercell(rect_grid)
     M = nfacespercell(rect_grid)
 
-    return HalfMBB{dim, T, N, M}(rect_grid, E, ν, ch, force, force_dof, metadata)
+    #return HalfMBB{dim, T, N, M}(rect_grid, E, ν, ch, force, force_dof, metadata)
+    return HalfMBB{dim, T, N, M}(rect_grid, E, ν, ch, force, force_dof)
 end
