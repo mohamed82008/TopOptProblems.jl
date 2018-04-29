@@ -1,17 +1,17 @@
 struct Metadata
     cell_dofs::Matrix{Int}
-    dof_cells::Matrix{Tuple{Int,Int}}
+    dof_cells::Vector{Tuple{Int,Int}}
+    dof_cells_offset::Vector{Int}
     node_first_cells::Vector{Tuple{Int,Int}}
     node_dofs::Matrix{Int}
 end
-
-function Metadata(dh::DofHandler)
+function Metadata(dh::DofHandler{dim}) where dim
     cell_dofs = get_cell_dofs_matrix(dh)
-    dof_cells = get_dof_cells_matrix(dh, cell_dofs)
+    dof_cells, dof_cells_offset = get_dof_cells_matrix(dh, cell_dofs)
     node_first_cells = get_node_first_cells(dh)
-    node_dofs = get_node_dofs(dh, node_first_cells)
+    node_dofs = reshape(dh.node_dofs, dim, getnnodes(dh.grid))
 
-    meta = Metadata(cell_dofs, dof_cells, node_first_cells, node_dofs)
+    meta = Metadata(cell_dofs, dof_cells, dof_cells_offset, node_first_cells, node_dofs)
 end
 
 function get_cell_dofs_matrix(dh)
@@ -26,16 +26,34 @@ function get_cell_dofs_matrix(dh)
 end
 
 function get_dof_cells_matrix(dh, cell_dofs)
-    dof_cells = fill((0,0), getnbasefunctions(dh.field_interpolations[1]), ndofs(dh))
-    dof_cell_count = ones(Int, ndofs(dh))
+    dof_cells_vecofvecs = [Vector{Tuple{Int,Int}}() for i in 1:ndofs(dh)]
+    l = 0
     for cellidx in 1:size(cell_dofs, 2)
         for localidx in 1:size(cell_dofs, 1)
             dofidx = cell_dofs[localidx, cellidx]
-            dof_cells[dof_cell_count[dofidx], dofidx] = (cellidx, localidx)
-            dof_cell_count[dofidx] += 1
+            push!(dof_cells_vecofvecs[dofidx], (cellidx, localidx))
+            l += 1
         end
     end
-    dof_cells
+
+    dof_cells = Tuple{Int,Int}[]
+    sizehint!(dof_cells, l)
+    dof_cells_offset = Int[]
+    sizehint!(dof_cells_offset, ndofs(dh))
+
+    visited = BitVector(ndofs(dh))
+    visited .= false
+    for (dofidx, indsincells) in enumerate(dof_cells_vecofvecs)
+        for indincell in indsincells
+            push!(dof_cells, indincell)
+            if !visited[dofidx]
+                push!(dof_cells_offset, length(dof_cells))
+                visited[dofidx] = true
+            end
+        end
+    end
+    
+    dof_cells, dof_cells_offset
 end
 
 function get_node_first_cells(dh)

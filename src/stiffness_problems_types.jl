@@ -1,6 +1,19 @@
 abstract type StiffnessTopOptProblem{dim, T} <: AbstractTopOptProblem end
 
 """
+Imported stiffness problem from a .inp file.
+"""
+struct InpStiffness{dim, N, TF, M, TI, GO} <: StiffnessTopOptProblem{dim, TF}
+    inp_content::InpContent{dim, TF, N, TI}
+    geom_order::Type{Val{GO}}
+    ch::ConstraintHandler{DofHandler{dim, N, TF, M}, TF}
+    black::BitVector
+    white::BitVector
+    varind::Vector{TI}
+    metadata::Metadata
+end
+
+"""
 ```
 ///**********************************
 ///*                                *
@@ -46,7 +59,7 @@ end
 
 API:
 ```
-        PointLoadCantilever(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, force) where {dim}
+    PointLoadCantilever(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, force) where {dim}
 ```
 
 Example:
@@ -67,7 +80,10 @@ struct PointLoadCantilever{dim, T, N, M} <: StiffnessTopOptProblem{dim, T}
     ch::ConstraintHandler{DofHandler{dim, N, T, M}, T}
     force::T
     force_dof::Int
-#    metadata::Metadata
+    black::BitVector
+    white::BitVector
+    varind::Vector{Int}
+    metadata::Metadata
 end
 
 function PointLoadCantilever(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, force) where {dim}
@@ -106,7 +122,7 @@ function PointLoadCantilever(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, f
     t = T(0)
     update!(ch, t)
 
-    #metadata = Metadata(dh)
+    metadata = Metadata(dh)
     
     fnode = Tuple(getnodeset(rect_grid.grid, "down_force"))[1]
     node_dofs = reshape(ch.dh.node_dofs, ch.dh.ndofs_per_node[], getnnodes(ch.dh.grid))
@@ -115,8 +131,10 @@ function PointLoadCantilever(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, f
     N = nnodespercell(rect_grid)
     M = nfacespercell(rect_grid)
 
-    #return PointLoadCantilever{dim, T, N, M}(rect_grid, E, ν, ch, force, force_dof, metadata)
-    return PointLoadCantilever{dim, T, N, M}(rect_grid, E, ν, ch, force, force_dof)
+    black, white = find_black_and_white(dh)
+    varind = find_varind(black, white)
+    
+    return PointLoadCantilever{dim, T, N, M}(rect_grid, E, ν, ch, force, force_dof, black, white, varind, metadata)
 end
 
 """
@@ -166,7 +184,7 @@ end
 
 API:
 ```
-        HalfMBB(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, force) where {dim}
+    HalfMBB(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, force) where {dim}
 ```
 
 Example:
@@ -187,7 +205,10 @@ struct HalfMBB{dim, T, N, M} <: StiffnessTopOptProblem{dim, T}
     ch::ConstraintHandler{DofHandler{dim, N, T, M}, T}
     force::T
     force_dof::Int
-    #metadata::Metadata
+    black::BitVector
+    white::BitVector
+    varind::Vector{Int}
+    metadata::Metadata
 end
 function HalfMBB(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, force) where {dim}
     _T = promote_type(eltype(sizes), typeof(E), typeof(ν), typeof(force))
@@ -230,7 +251,7 @@ function HalfMBB(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, force) where 
     t = T(0)
     update!(ch, t)
 
-    #metadata = Metadata(dh)
+    metadata = Metadata(dh)
 
     fnode = Tuple(getnodeset(rect_grid.grid, "down_force"))[1]
     node_dofs = reshape(ch.dh.node_dofs, ch.dh.ndofs_per_node[], getnnodes(ch.dh.grid))
@@ -239,6 +260,8 @@ function HalfMBB(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, force) where 
     N = nnodespercell(rect_grid)
     M = nfacespercell(rect_grid)
 
-    #return HalfMBB{dim, T, N, M}(rect_grid, E, ν, ch, force, force_dof, metadata)
-    return HalfMBB{dim, T, N, M}(rect_grid, E, ν, ch, force, force_dof)
+    black, white = find_black_and_white(dh)
+    varind = find_varind(black, white)
+
+    return HalfMBB{dim, T, N, M}(rect_grid, E, ν, ch, force, force_dof, black, white, varind, metadata)
 end
