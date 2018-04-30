@@ -1,3 +1,11 @@
+"""
+Abstract stiffness topology optimization problem. All subtypes must have the following fields:
+    ch::ConstraintHandler
+    black::BitVector
+    white::BitVector
+    varind::Vector{Int}
+    metadata::Metadata
+"""
 abstract type StiffnessTopOptProblem{dim, T} <: AbstractTopOptProblem end
 
 """
