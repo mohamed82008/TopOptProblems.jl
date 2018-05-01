@@ -6,9 +6,9 @@ struct ElementFEAInfo{T, TK<:AbstractMatrix{T}, Tf<:AbstractVector{T}, TKes<:Abs
     cload::Tcload
 end
 ElementFEAInfo(sp::RectilinearPointLoad{dim, T}) where {dim, T} = ElementFEAInfo(make_Kes(sp), [zeros(T, ndofs(sp.ch.dh)) for i in 1:getncells(sp.ch.dh.grid)], make_f(sp))
-ElementFEAInfo(sp::InpStiffness) = ElementFEAInfo(make_Kes_and_fes(sp)..., make_cload(sp))
+ElementFEAInfo(sp::InpStiffness, quad_order=2, ::Type{Val{mat_type}}=Val{:Static}) where {mat_type} = ElementFEAInfo(make_Kes_and_fes(sp, quad_order, Val{mat_type})..., make_cload(sp))
 
-struct GlobalFEAInfo{T, TK<:AbstractMatrix{T}, Tf<:AbstractVector{T}}
+mutable struct GlobalFEAInfo{T, TK<:AbstractMatrix{T}, Tf<:AbstractVector{T}}
     K::TK
     f::Tf
 end
@@ -16,7 +16,7 @@ GlobalFEAInfo(K::AbstractMatrix{T}, f::AbstractVector{T}) where T = GlobalFEAInf
 GlobalFEAInfo(::Type{T}) where T = GlobalFEAInfo{T}()
 GlobalFEAInfo() = GlobalFEAInfo{Float64}()
 GlobalFEAInfo{T}() where T = GlobalFEAInfo{T, SparseMatrixCSC{T, Int}, Vector{T}}(sparse(zeros(T, 0, 0)), zeros(T, 0))
-
+GlobalFEAInfo(sp::StiffnessTopOptProblem) = GlobalFEAInfo(make_empty_K(sp), make_empty_f(sp))
 make_empty_K(sp::StiffnessTopOptProblem) = Symmetric(create_sparsity_pattern(sp.ch.dh))
 make_empty_f(sp::StiffnessTopOptProblem{dim, T}) where {dim, T} = zeros(T, ndofs(sp.ch.dh))
 
@@ -57,7 +57,11 @@ function _make_Kes(sp::RectilinearPointLoad{dim, T}, ::Type{Val{mat_type}}, ::Ty
     nel = getncells(dh.grid)
 
     if mat_type === :Static || mat_type === :SMatrix
-        Kes = Symmetric{T, SMatrix{Kesize, Kesize, T, Kesize^2}}[]
+        if !(T === BigFloat)
+            Kes = Symmetric{T, SMatrix{Kesize, Kesize, T, Kesize^2}}[]
+        else
+            Kes = Symmetric{T, SizedMatrix{Kesize, Kesize, T, Kesize^2}}[]
+        end
         sizehint!(Kes, nel)
 
         Ke_e = zeros(T, dim, dim)
@@ -84,7 +88,11 @@ function _make_Kes(sp::RectilinearPointLoad{dim, T}, ::Type{Val{mat_type}}, ::Ty
                     end
                 end
             end
-            push!(Kes, Symmetric(SMatrix{Kesize, Kesize, T, Kesize*Kesize}(Ke_0)))
+            if !(T === BigFloat)
+                push!(Kes, Symmetric(SMatrix{Kesize, Kesize, T, Kesize*Kesize}(Ke_0)))
+            else
+                push!(Kes, Symmetric(SizedMatrix{Kesize, Kesize, T}(Ke_0)))
+            end
         end
     else
         Kes = let Kesize=Kesize, nel=nel
@@ -172,10 +180,31 @@ function _make_Kes_and_fes(dh::DofHandler{dim, N, T}, ::Type{Val{mat_type}}, ::T
     nel = getncells(dh.grid)
     body_force = ρ .* g # Force per unit volume
     
-    if mat_type === :Static
-        Kes = Symmetric{T, SMatrix{Kesize, Kesize, T, Kesize^2}}[]
+    if !(T === BigFloat)
+        if mat_type === :Static || mat_type === :SMatrix
+            MatrixType = SMatrix{Kesize, Kesize, T, Kesize^2}
+            VectorType = MVector{Kesize, T}
+        elseif mat_type === :MMatrix
+            MatrixType = MMatrix{Kesize, Kesize, T, Kesize^2}
+            VectorType = MVector{Kesize, T}
+        else
+            MatrixType = Matrix{T}
+            VectorType = Vector{T}
+        end
+    else
+        if mat_type === :Static || mat_type === :SMatrix  || mat_type === :MMatrix
+            MatrixType = SizedMatrix{Kesize, Kesize, T, Kesize^2}
+            VectorType = SizedVector{Kesize, T}
+        else
+            MatrixType = Matrix{T}
+            VectorType = Vector{T}
+        end
+    end
+
+    if MatrixType <: StaticArray
+        Kes = Symmetric{T, MatrixType}[]
         sizehint!(Kes, nel)
-        fes = [zeros(MVector{Kesize, T}) for i in 1:nel]
+        fes = [zeros(VectorType) for i in 1:nel]
         
         Ke_e = zeros(T, dim, dim)
         fe = zeros(T, Kesize)
@@ -205,7 +234,11 @@ function _make_Kes_and_fes(dh::DofHandler{dim, N, T}, ::Type{Val{mat_type}}, ::T
                     end
                 end
             end
-            push!(Kes, Symmetric(SMatrix{Kesize, Kesize, T, Kesize*Kesize}(Ke_0)))
+            if MatrixType <: SizedMatrix # Work around because full constructor errors
+                push!(Kes, Symmetric(SizedMatrix{Kesize,Kesize,T}(Ke_0)))
+            else
+                push!(Kes, Symmetric(MatrixType(Ke_0)))
+            end
         end
     else
         Kes = let Kesize=Kesize, nel=nel

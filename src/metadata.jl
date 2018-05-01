@@ -38,19 +38,12 @@ function get_dof_cells_matrix(dh, cell_dofs)
 
     dof_cells = Tuple{Int,Int}[]
     sizehint!(dof_cells, l)
-    dof_cells_offset = Int[]
-    sizehint!(dof_cells_offset, ndofs(dh))
+    dof_cells_offset = Int[1]
+    sizehint!(dof_cells_offset, ndofs(dh)+1)
 
-    visited = BitVector(ndofs(dh))
-    visited .= false
     for (dofidx, indsincells) in enumerate(dof_cells_vecofvecs)
-        for indincell in indsincells
-            push!(dof_cells, indincell)
-            if !visited[dofidx]
-                push!(dof_cells_offset, length(dof_cells))
-                visited[dofidx] = true
-            end
-        end
+        append!(dof_cells, indsincells)
+        push!(dof_cells_offset, length(dof_cells)+1)
     end
     
     dof_cells, dof_cells_offset
