@@ -30,3 +30,6 @@ function find_black_and_white(dh)
     
     return black, white
 end
+
+YoungsModulus(p::RectilinearPointLoad) = p.E
+YoungsModulus(inp::InpStiffness) = inp.inp_content.E
