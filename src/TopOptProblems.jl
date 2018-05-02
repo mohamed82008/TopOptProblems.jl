@@ -13,6 +13,6 @@ include("stiffness_problems_types.jl")
 include("inp_to_juafem.jl")
 include("matrices_and_vectors.jl")
 
-export RectilinearGrid, PointLoadCantilever, HalfMBB
+export PointLoadCantilever, HalfMBB, InpStiffness, StiffnessTopOptProblem, AbstractTopOptProblem, GlobalFEAInfo, ElementFEAInfo
 
 end # module

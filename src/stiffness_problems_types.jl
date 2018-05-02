@@ -20,6 +20,7 @@ struct InpStiffness{dim, N, TF, M, TI, GO} <: StiffnessTopOptProblem{dim, TF}
     varind::Vector{TI}
     metadata::Metadata
 end
+InpStiffness(x) = inp_to_juafem(x)
 
 """
 ```
@@ -58,7 +59,7 @@ end
 
 `ch`: a JuAFEM.ConstraintHandler struct
 
-`force`: force at the center right of the cantilever beam (negative is downward)
+`force`: force at the center right of the cantilever beam (positive is downward)
 
 `force_dof`: dof number at which the force is applied
 
@@ -184,7 +185,7 @@ end
 
 `ch`: a JuAFEM.ConstraintHandler struct
 
-`force`: force at the top left of half the MBB (negative is downward)
+`force`: force at the top left of half the MBB (positive is downward)
 
 `force_dof`: dof number at which the force is applied
 
