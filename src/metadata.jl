@@ -2,16 +2,21 @@ struct Metadata
     cell_dofs::Matrix{Int}
     dof_cells::Vector{Tuple{Int,Int}}
     dof_cells_offset::Vector{Int}
-    node_first_cells::Vector{Tuple{Int,Int}}
+    #node_first_cells::Vector{Tuple{Int,Int}}
+    node_cells::Vector{Tuple{Int,Int}}
+    node_cells_offset::Vector{Int}
     node_dofs::Matrix{Int}
 end
+
 function Metadata(dh::DofHandler{dim}) where dim
     cell_dofs = get_cell_dofs_matrix(dh)
     dof_cells, dof_cells_offset = get_dof_cells_matrix(dh, cell_dofs)
-    node_first_cells = get_node_first_cells(dh)
+    #node_first_cells = get_node_first_cells(dh)
+    node_cells, node_cells_offset = get_node_cells(dh)
     node_dofs = reshape(dh.node_dofs, dim, getnnodes(dh.grid))
 
-    meta = Metadata(cell_dofs, dof_cells, dof_cells_offset, node_first_cells, node_dofs)
+    #meta = Metadata(cell_dofs, dof_cells, dof_cells_offset, node_first_cells, node_dofs)
+    meta = Metadata(cell_dofs, dof_cells, dof_cells_offset, node_cells, node_cells_offset, node_dofs)
 end
 
 function get_cell_dofs_matrix(dh)
@@ -62,6 +67,29 @@ function get_node_first_cells(dh)
         end
     end
     return node_first_cells
+end
+
+function get_node_cells(dh)
+    node_cells_vecofvecs = [Vector{Tuple{Int,Int}}() for i in 1:ndofs(dh)]
+    l = 0
+    for (cellidx, cell) in enumerate(CellIterator(dh))
+        for (localidx, nodeidx) in enumerate(cell.nodes)
+            push!(node_cells_vecofvecs[nodeidx], (cellidx, localidx))
+            l += 1
+        end
+    end
+
+    node_cells = Tuple{Int,Int}[] 
+    node_cells_offset = Int[1]
+    sizehint!(node_cells, l)
+    sizehint!(node_cells_offset, getnnodes(dh.grid) + 1)
+
+    for (nodeidx, indsincells) in enumerate(node_cells_vecofvecs)
+        append!(node_cells, indsincells)
+        push!(node_cells_offset, length(node_cells)+1)
+    end
+
+    return node_cells, node_cells_offset
 end
 
 function get_node_dofs(dh::DofHandler{dim}, node_first_cells) where dim
