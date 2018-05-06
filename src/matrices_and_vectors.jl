@@ -4,6 +4,7 @@ struct ElementFEAInfo{dim, T, TK<:AbstractMatrix{T}, Tf<:AbstractVector{T}, TKes
     Kes::TKes
     fes::Tfes
     fixedload::Tcload
+    cellvolumes::Tcload
     cellvalues::TCV
     facevalues::TFV
     metadata::Metadata
@@ -12,16 +13,28 @@ function ElementFEAInfo(sp::RectilinearPointLoad{dim, T}, quad_order=2, ::Type{V
     Kes, cellvalues, facevalues = make_Kes(sp, quad_order, Val{mat_type})
     fes = [zeros(T, ndofs_per_cell(sp.ch.dh)) for i in 1:getncells(sp.ch.dh.grid)]
     fixedload = make_f(sp)
-    return ElementFEAInfo(Kes, fes, fixedload, cellvalues, facevalues, sp.metadata)
+    cellvolumes = get_cell_volumes(sp, cellvalues)
+    return ElementFEAInfo(Kes, fes, fixedload, cellvolumes, cellvalues, facevalues, sp.metadata)
 end
 function ElementFEAInfo(sp::InpStiffness, quad_order=2, ::Type{Val{mat_type}}=Val{:Static}) where {mat_type} 
     Kes, weights, dloads, cellvalues, facevalues = make_Kes_and_fes(sp, quad_order, Val{mat_type})
     fixedload = full(make_cload(sp))
     assemble_f!(fixedload, sp, dloads)
-    ElementFEAInfo(Kes, weights, fixedload, cellvalues, facevalues, sp.metadata)
+    cellvolumes = get_cell_volumes(sp, cellvalues)
+    ElementFEAInfo(Kes, weights, fixedload, cellvolumes, cellvalues, facevalues, sp.metadata)
 end
-function ElementFEAInfo(Kes::AbstractVector{TK}, fes::AbstractVector{Tf},fixedload::AbstractVector{T}, cellvalues::TCV, facevalues::TFV, metadata::Metadata) where {T, TK<:AbstractMatrix{T}, Tf<:AbstractVector{T}, dim, dimless1, refshape, TCV<:CellValues{dim, T, refshape}, TFV<:FaceValues{dimless1, T, refshape}}
-    ElementFEAInfo{dim, T, TK, Tf, typeof(Kes), typeof(fes), typeof(fixedload), refshape, TCV, dimless1, TFV}(Kes, fes, fixedload, cellvalues, facevalues, metadata)
+function ElementFEAInfo(Kes::AbstractVector{TK}, fes::AbstractVector{Tf},fixedload::AbstractVector{T}, cellvolumes::AbstractVector{T}, cellvalues::TCV, facevalues::TFV, metadata::Metadata) where {T, TK<:AbstractMatrix{T}, Tf<:AbstractVector{T}, dim, dimless1, refshape, TCV<:CellValues{dim, T, refshape}, TFV<:FaceValues{dimless1, T, refshape}}
+    ElementFEAInfo{dim, T, TK, Tf, typeof(Kes), typeof(fes), typeof(fixedload), refshape, TCV, dimless1, TFV}(Kes, fes, fixedload, cellvolumes, cellvalues, facevalues, metadata)
+end
+
+function get_cell_volumes(sp::StiffnessTopOptProblem{dim, T}, cellvalues) where {dim, T}
+    dh = sp.ch.dh
+    cellvolumes = zeros(T, getncells(dh.grid))
+    for (i, cell) in enumerate(CellIterator(dh))
+        reinit!(cellvalues, cell)
+        cellvolumes[i] = sum(JuAFEM.getdetJdV(cellvalues, q_point) for q_point in 1:JuAFEM.getnquadpoints(cellvalues))
+    end
+    return cellvolumes
 end
 
 mutable struct GlobalFEAInfo{T, TK<:AbstractMatrix{T}, Tf<:AbstractVector{T}}
@@ -229,7 +242,11 @@ function _make_Kes_and_weights(dh::DofHandler{dim, N, T}, ::Type{Val{mat_type}},
         _celliterator::celliteratortype = CellIterator(dh)
         for (k, cell) in enumerate(_celliterator)
             Ke_0 .= 0
-            reinit!(cellvalues, cell)
+            try
+                reinit!(cellvalues, cell)
+            catch
+                @show cell.coords, cell.nodes, cell.current_cellid[]
+            end
             fe = weights[k]
             for q_point in 1:getnquadpoints(cellvalues)
                 dΩ = getdetJdV(cellvalues, q_point)
