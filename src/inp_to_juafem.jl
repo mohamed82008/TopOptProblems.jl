@@ -4,12 +4,60 @@ function inp_to_juafem(filepath_with_ext)
 end
 function inp_to_juafem(problem::InpContent)
     _celltype = problem.celltype
-    if _celltype == "C3D10"
+    if _celltype == "CPS3"
+        # Linear triangle
+        celltype = JuAFEM.Triangle
+        geom_order = 1
+        refshape = RefTetrahedron
+        dim = 2
+    elseif _celltype == "CPS6"
+        # Quadratic triangle
+        celltype = JuAFEM.QuadraticTriangle
+        geom_order = 2
+        refshape = RefTetrahedron
+        dim = 2
+    elseif _celltype == "C3D4"
+        # Linear tetrahedron
+        celltype = JuAFEM.Tetrahedron
+        geom_order = 1
+        refshape = RefTetrahedron
+        dim = 3
+    elseif _celltype == "C3D10"
+        # Quadratic tetrahedron
         celltype = JuAFEM.QuadraticTetrahedron
         geom_order = 2
         refshape = RefTetrahedron
+        dim = 3    
+    elseif _celltype == "CPS4"
+        # Linear quadrilateral
+        celltype = JuAFEM.Quadrilateral
+        geom_order = 1
+        refshape = RefCube
+        dim = 2
+    elseif _celltype == "CPS8" || _celltype == "CPS8R"
+        # Quadratic quadrilateral
+        celltype = JuAFEM.QuadraticQuadrilateral
+        geom_order = 2
+        refshape = RefCube
+        dim = 2
+    elseif _celltype == "C3D8" || _celltype == "C3D8R"
+        # Linear hexahedron
+        celltype = JuAFEM.Hexahedron
+        geom_order = 1
+        refshape = RefCube
         dim = 3
-        # Add more cell types
+    elseif _celltype == "C3D20" || _celltype == "C3D20R"
+        # Quadratic hexahedron
+        celltype = JuAFEM.QuadraticHexahedron
+        geom_order = 2
+        refshape = RefCube
+        dim = 3
+    #elseif _celltype == "C3D6"
+        # Linear wedge
+    #elseif _celltype == "C3D15"
+        # Quadratic wedge
+    else
+        throw("Unsupported cell type $_celltype.")
     end
     cells = celltype.(problem.cells)
     nodes = Node.(problem.node_coords)
