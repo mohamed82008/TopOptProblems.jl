@@ -134,7 +134,7 @@ function PointLoadCantilever(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, f
     metadata = Metadata(dh)
     
     fnode = Tuple(getnodeset(rect_grid.grid, "down_force"))[1]
-    node_dofs = reshape(ch.dh.node_dofs, ch.dh.ndofs_per_node[], getnnodes(ch.dh.grid))
+    node_dofs = metadata.node_dofs
     force_dof = node_dofs[2, fnode]
 
     N = nnodespercell(rect_grid)
@@ -263,7 +263,7 @@ function HalfMBB(nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, force) where 
     metadata = Metadata(dh)
 
     fnode = Tuple(getnodeset(rect_grid.grid, "down_force"))[1]
-    node_dofs = reshape(ch.dh.node_dofs, ch.dh.ndofs_per_node[], getnnodes(ch.dh.grid))
+    node_dofs = metadata.node_dofs
     force_dof = node_dofs[2, fnode]
 
     N = nnodespercell(rect_grid)

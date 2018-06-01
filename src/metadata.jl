@@ -13,7 +13,7 @@ function Metadata(dh::DofHandler{dim}) where dim
     dof_cells, dof_cells_offset = get_dof_cells_matrix(dh, cell_dofs)
     #node_first_cells = get_node_first_cells(dh)
     node_cells, node_cells_offset = get_node_cells(dh)
-    node_dofs = reshape(dh.node_dofs, dim, getnnodes(dh.grid))
+    node_dofs = get_node_dofs(dh)
 
     #meta = Metadata(cell_dofs, dof_cells, dof_cells_offset, node_first_cells, node_dofs)
     meta = Metadata(cell_dofs, dof_cells, dof_cells_offset, node_cells, node_cells_offset, node_dofs)
@@ -92,36 +92,35 @@ function get_node_cells(dh)
     return node_cells, node_cells_offset
 end
 
-function get_node_dofs(dh::DofHandler{dim}, node_first_cells) where dim
-    node_dofs = fill(0, dim, getnnodes(dh.grid))
-    xh = zeros(typeof(dh.grid.nodes[1].x), length(dh.grid.cells[1].nodes))
-    _cell_dofs = zeros(Int, ndofs_per_cell(dh))
-    bcv = dh.bc_values[1]
-    interpolation = dh.field_interpolations[1]
-    for nodeidx in 1:size(node_dofs, 2)
-        found = false
-        node_coord = dh.grid.nodes[nodeidx].x
-        cellidx = node_first_cells[nodeidx][1]
-        getcoordinates!(xh, dh.grid, cellidx)
-        for (faceidx, face_field_points) in enumerate(JuAFEM.faces(interpolation))
-            bcv.current_face[] = faceidx
-            for p in 1:length(face_field_points)
-                field_point_coord = spatial_coordinate(bcv, p, xh)
-                if node_coord ≈ field_point_coord
-                    found = true
-                    celldofs!(_cell_dofs, dh, cellidx)
-                    offset = (face_field_points[p]-1)*dim
-                    for d in 1:dim
-                        index_in_cell = offset + d
-                        node_dofs[d, nodeidx] = _cell_dofs[index_in_cell]
+node_field_offset(dh, f) = sum(view(dh.field_dims, 1:f-1))
+
+function get_node_dofs(dh::DofHandler)
+    ndofspernode = sum(dh.field_dims)
+    nfields = length(dh.field_dims)
+    nnodes = getnnodes(dh.grid)
+    interpol_points = ndofs_per_cell(dh)
+    _celldofs = fill(0, ndofs_per_cell(dh))
+    node_dofs = zeros(Int, ndofspernode, nnodes)
+    visited = BitVector(nnodes)
+    visited .= false
+    for field in 1:nfields
+        field_dim = dh.field_dims[field]
+        node_offset = node_field_offset(dh, field)
+        offset = JuAFEM.field_offset(dh, dh.field_names[field])
+        for (cellidx, cell) in enumerate(dh.grid.cells)
+            celldofs!(_celldofs, dh, cellidx) # update the dofs for this cell
+            for idx in 1:min(interpol_points, length(cell.nodes))
+                node = cell.nodes[idx]
+                if !visited[node]
+                    noderange = (offset + (idx-1)*field_dim + 1):(offset + idx*field_dim) # the dofs in this node
+                    for i in 1:field_dim
+                        node_dofs[node_offset+i,node] = _celldofs[noderange[i]]
                     end
-                    break
+                    visited[node] = true
                 end
             end
-            if found
-                break
-            end        
         end
     end
+
     return node_dofs
 end
