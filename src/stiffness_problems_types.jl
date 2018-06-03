@@ -9,10 +9,10 @@ Abstract stiffness topology optimization problem. All subtypes must have the fol
 abstract type StiffnessTopOptProblem{dim, T} <: AbstractTopOptProblem end
 
 """
-Imported stiffness problem from a .inp file.
+Stiffness problem imported from a .inp file.
 """
 struct InpStiffness{dim, N, TF, M, TI, GO} <: StiffnessTopOptProblem{dim, TF}
-    inp_content::InpContent{dim, TF, N, TI}
+    inp_content::JuAFEM.InpContent{dim, TF, N, TI}
     geom_order::Type{Val{GO}}
     ch::ConstraintHandler{DofHandler{dim, N, TF, M}, TF}
     black::BitVector
@@ -20,7 +20,23 @@ struct InpStiffness{dim, N, TF, M, TI, GO} <: StiffnessTopOptProblem{dim, TF}
     varind::Vector{TI}
     metadata::Metadata
 end
-InpStiffness(x) = inp_to_juafem(x)
+
+"""
+Imports stiffness problem from a .inp file.
+"""
+function InpStiffness(filepath_with_ext::AbstractString)
+    problem = JuAFEM.extract_inp(filepath_with_ext)
+    return InpStiffness(problem)
+end
+function InpStiffness(problem::JuAFEM.InpContent)
+    ch = JuAFEM.inp_to_juafem(problem)
+    black, white = find_black_and_white(ch.dh)
+    varind = find_varind(black, white)
+    metadata = Metadata(ch.dh)
+    geom_order = JuAFEM.getorder(ch.dh.field_interpolations[1])
+    return InpStiffness(problem, Val{geom_order}, ch, black, white, varind, metadata)
+end
+
 
 """
 ```

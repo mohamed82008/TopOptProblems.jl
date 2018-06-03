@@ -68,13 +68,16 @@ middlex(rectgrid::RectilinearGrid, x) = x[1] ≈ (rectgrid.corners[1][1] + rectg
 middley(rectgrid::RectilinearGrid, x) = x[2] ≈ (rectgrid.corners[1][2] + rectgrid.corners[2][2]) / 2
 middlez(rectgrid::RectilinearGrid, x) = x[3] ≈ (rectgrid.corners[1][3] + rectgrid.corners[2][3]) / 2
 
+nnodes(cell::Type{JuAFEM.Cell{dim,N,M}}) where {dim, N, M} = N
+nnodes(cell::JuAFEM.Cell) = nnodes(typeof(cell))
+
 function RectilinearGrid(nels::NTuple{dim,Int}, sizes::NTuple{dim,T}) where {dim,T}
     geoshape = dim === 2 ? Quadrilateral : Hexahedron
     corner1 = Vec{dim}(fill(T(0), dim))
     corner2 = Vec{dim}((nels .* sizes))
     grid = generate_grid(geoshape, nels, corner1, corner2);
 
-    N = JuAFEM.nnodes(geoshape)
+    N = nnodes(geoshape)
     M = JuAFEM.nfaces(geoshape)
     ncells = prod(nels)
     return RectilinearGrid{dim, T, N, M}(grid, nels, sizes, (corner1, corner2),BitVector(ncells), BitVector(ncells), BitVector(ncells))    

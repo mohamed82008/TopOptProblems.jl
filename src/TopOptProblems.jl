@@ -2,7 +2,6 @@ module TopOptProblems
 
 using JuAFEM
 using StaticArrays
-using InpParser
 
 abstract type AbstractTopOptProblem end
 
