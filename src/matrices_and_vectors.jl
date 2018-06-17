@@ -350,7 +350,7 @@ end
 function make_cload(inpstiffness::InpStiffness{dim, N, T}) where {dim, N, T}
     cloads = inpstiffness.inp_content.cloads
     dh = inpstiffness.ch.dh
-    node_dofs = dh.node_dofs
+    node_dofs = inpstiffness.metadata.node_dofs
     inds = Int[]
     vals = T[]
     for nodeidx in keys(cloads)
