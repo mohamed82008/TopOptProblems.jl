@@ -8,7 +8,6 @@ abstract type AbstractTopOptProblem end
 include("grids.jl")
 include("metadata.jl")
 include("stiffness_problems_types.jl")
-include("inp_to_juafem.jl")
 include("assemble_f.jl")
 include("matrices_and_vectors.jl")
 include("utils.jl")
