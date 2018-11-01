@@ -1,4 +1,4 @@
-const RectilinearPointLoad{dim, T, N, M} = Union{PointLoadCantilever{dim, T, N, M}, HalfMBB{dim, T, N, M}}
+const RectilinearPointLoad{dim, T, N, M} = Union{PointLoadCantilever{dim, T, N, M}, HalfMBB{dim, T, N, M}, LBeam{T, N, M}}
 
 struct ElementFEAInfo{dim, T, TK<:AbstractMatrix{T}, Tf<:AbstractVector{T}, TKes<:AbstractVector{TK}, Tfes<:AbstractVector{Tf}, Tcload<:AbstractVector{T}, refshape, TCV<:CellValues{dim, T, refshape}, dimless1, TFV<:FaceValues{dimless1, T, refshape}}
     Kes::TKes
@@ -9,6 +9,7 @@ struct ElementFEAInfo{dim, T, TK<:AbstractMatrix{T}, Tf<:AbstractVector{T}, TKes
     facevalues::TFV
     metadata::Metadata
 end
+#=
 function ElementFEAInfo(sp::RectilinearPointLoad{dim, T}, quad_order=2, ::Type{Val{mat_type}}=Val{:Static}) where {dim, T, mat_type}
     Kes, cellvalues, facevalues = make_Kes(sp, quad_order, Val{mat_type})
     fes = [zeros(T, ndofs_per_cell(sp.ch.dh)) for i in 1:getncells(sp.ch.dh.grid)]
@@ -16,13 +17,16 @@ function ElementFEAInfo(sp::RectilinearPointLoad{dim, T}, quad_order=2, ::Type{V
     cellvolumes = get_cell_volumes(sp, cellvalues)
     return ElementFEAInfo(Kes, fes, fixedload, cellvolumes, cellvalues, facevalues, sp.metadata)
 end
-function ElementFEAInfo(sp::InpStiffness, quad_order=2, ::Type{Val{mat_type}}=Val{:Static}) where {mat_type} 
+=#
+
+function ElementFEAInfo(sp, quad_order=2, ::Type{Val{mat_type}}=Val{:Static}) where {mat_type} 
     Kes, weights, dloads, cellvalues, facevalues = make_Kes_and_fes(sp, quad_order, Val{mat_type})
     fixedload = full(make_cload(sp))
     assemble_f!(fixedload, sp, dloads)
     cellvolumes = get_cell_volumes(sp, cellvalues)
     ElementFEAInfo(Kes, weights, fixedload, cellvolumes, cellvalues, facevalues, sp.metadata)
 end
+
 function ElementFEAInfo(Kes::AbstractVector{TK}, fes::AbstractVector{Tf},fixedload::AbstractVector{T}, cellvolumes::AbstractVector{T}, cellvalues::TCV, facevalues::TFV, metadata::Metadata) where {T, TK<:AbstractMatrix{T}, Tf<:AbstractVector{T}, dim, dimless1, refshape, TCV<:CellValues{dim, T, refshape}, TFV<:FaceValues{dimless1, T, refshape}}
     ElementFEAInfo{dim, T, TK, Tf, typeof(Kes), typeof(fes), typeof(fixedload), refshape, TCV, dimless1, TFV}(Kes, fes, fixedload, cellvolumes, cellvalues, facevalues, metadata)
 end
@@ -41,20 +45,30 @@ mutable struct GlobalFEAInfo{T, TK<:AbstractMatrix{T}, Tf<:AbstractVector{T}}
     K::TK
     f::Tf
 end
-GlobalFEAInfo(K::AbstractMatrix{T}, f::AbstractVector{T}) where T = GlobalFEAInfo{T, typeof(K), typeof(f)}(K, f)
+
 GlobalFEAInfo(::Type{T}) where T = GlobalFEAInfo{T}()
+
 GlobalFEAInfo() = GlobalFEAInfo{Float64}()
+
 GlobalFEAInfo{T}() where T = GlobalFEAInfo{T, SparseMatrixCSC{T, Int}, Vector{T}}(sparse(zeros(T, 0, 0)), zeros(T, 0))
+
 GlobalFEAInfo(sp::StiffnessTopOptProblem) = GlobalFEAInfo(make_empty_K(sp), make_empty_f(sp))
+
+GlobalFEAInfo(K::AbstractMatrix{T}, f::AbstractVector{T}) where T = GlobalFEAInfo{T, typeof(K), typeof(f)}(K, f)
+
 make_empty_K(sp::StiffnessTopOptProblem) = Symmetric(create_sparsity_pattern(sp.ch.dh))
+
 make_empty_f(sp::StiffnessTopOptProblem{dim, T}) where {dim, T} = zeros(T, ndofs(sp.ch.dh))
 
+#=
 function make_Kes(sp::RectilinearPointLoad, quad_order=2)
     make_Kes(sp, quad_order, Val{:Static})
 end
+
 function make_Kes(sp::RectilinearPointLoad, ::Type{Val{mat_type}}) where mat_type
     make_Kes(sp, 2, Val{mat_type})
 end
+
 function make_Kes(sp::RectilinearPointLoad{dim, T}, quad_order, ::Type{Val{mat_type}}) where {dim, T, mat_type}
     E = sp.E
     ν = sp.ν
@@ -78,6 +92,7 @@ function make_Kes(sp::RectilinearPointLoad{dim, T}, quad_order, ::Type{Val{mat_t
     
     return _make_Kes(sp, Val{mat_type}, Val{n_basefuncs}, Val{dim*n_basefuncs}, C, interpolation_space, quadrature_rule, cellvalues, facevalues), cellvalues, facevalues
 end
+
 function _make_Kes(sp::RectilinearPointLoad{dim, T}, ::Type{Val{mat_type}}, ::Type{Val{n_basefuncs}}, ::Type{Val{ndofs_per_cell}}, C, interpolation_space, quadrature_rule, cellvalues, facevalues) where {dim, T, mat_type, n_basefuncs, ndofs_per_cell}
     dh = sp.ch.dh
 
@@ -163,22 +178,26 @@ function make_f(sp::RectilinearPointLoad)
     f = sparsevec([fdof], [-force], ndofs(sp.ch.dh))
     return f
 end
+=#
 
-function make_Kes_and_fes(problem::InpStiffness, quad_order=2)
+function make_Kes_and_fes(problem, quad_order=2)
     make_Kes_and_fes(problem, quad_order, Val{:Static})
 end
-function make_Kes_and_fes(problem::InpStiffness, ::Type{Val{mat_type}}) where mat_type
+
+function make_Kes_and_fes(problem, ::Type{Val{mat_type}}) where mat_type
     make_Kes_and_fes(problem, 2, Val{mat_type})
 end
-function make_Kes_and_fes(inpstiffness::InpStiffness{dim, N, T, M, TI, GO}, quad_order, ::Type{Val{mat_type}}) where {dim, N, T, M, TI, GO, mat_type}
-    problem = inpstiffness.inp_content
-    dh = inpstiffness.ch.dh
-    E = problem.E
-    ν = problem.mu
-    ρ = problem.density
+
+function make_Kes_and_fes(problem, quad_order, ::Type{Val{mat_type}}) where {mat_type}
+    T = floattype(problem)
+    dim = getdim(problem)
+    geom_order = getgeomorder(problem)
+    dh = getdh(problem)
+    E = getE(problem)
+    ν = getν(problem)
+    ρ = getdensity(problem)
 
     refshape = JuAFEM.getrefshape(dh.field_interpolations[1])
-    geom_order = GO
 
     λ = E*ν / ((1 + ν) * (1 - 2*ν))
     μ = E / (2*(1 + ν))
@@ -196,7 +215,7 @@ function make_Kes_and_fes(inpstiffness::InpStiffness{dim, N, T, M, TI, GO}, quad
     n_basefuncs = getnbasefunctions(cellvalues)
     
     Kes, weights = _make_Kes_and_weights(dh, Val{mat_type}, Val{n_basefuncs}, Val{dim*n_basefuncs}, C, ρ, quadrature_rule, cellvalues)
-    dloads = _make_dloads(weights, inpstiffness, facevalues)
+    dloads = _make_dloads(weights, problem, facevalues)
 
     return Kes, weights, dloads, cellvalues, facevalues
 end
@@ -313,19 +332,23 @@ function _make_Kes_and_weights(dh::DofHandler{dim, N, T}, ::Type{Val{mat_type}},
     return Kes, weights
 end
 
-function _make_dloads(fes, inpstiffness::InpStiffness{dim, N, T}, facevalues) where {dim, N, T}
+function _make_dloads(fes, problem, facevalues)
+    dim = getdim(problem)
+    N = nnodespercell(problem)
+    T = floattype(problem)
     dloads = deepcopy(fes)
     for i in 1:length(dloads)
         dloads[i] .= 0
     end
-    problem = inpstiffness.inp_content
-    grid = inpstiffness.ch.dh.grid
+    pressuredict = getpressuredict(problem)
+    dh = getdh(problem)
+    grid = dh.grid
     boundary_matrix = grid.boundary_matrix
-    cell_coords = zeros(Vec{dim, T}, N)
+    cell_coords = zeros(JuAFEM.Vec{dim, T}, N)
     n_basefuncs = getnbasefunctions(facevalues)
-    for k in keys(problem.dloads)
-        t = -problem.dloads[k] # traction = negative the pressure
-        faceset = problem.facesets[k]
+    for k in keys(pressuredict)
+        t = -pressuredict[k] # traction = negative the pressure
+        faceset = getfacesets(problem)[k]
         for (cellid, faceid) in faceset
             boundary_matrix[faceid, cellid] || throw("Face $((cellid, faceid)) not on boundary.")
             fe = dloads[cellid]
@@ -347,10 +370,13 @@ function _make_dloads(fes, inpstiffness::InpStiffness{dim, N, T}, facevalues) wh
     return dloads
 end
 
-function make_cload(inpstiffness::InpStiffness{dim, N, T}) where {dim, N, T}
-    cloads = inpstiffness.inp_content.cloads
-    dh = inpstiffness.ch.dh
-    node_dofs = inpstiffness.metadata.node_dofs
+function make_cload(problem)
+    T = floattype(problem)
+    dim = getdim(problem)
+    cloads = getcloaddict(problem)
+    dh = getdh(problem)
+    metadata = getmetadata(problem)
+    node_dofs = metadata.node_dofs
     inds = Int[]
     vals = T[]
     for nodeidx in keys(cloads)

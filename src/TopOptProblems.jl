@@ -2,16 +2,22 @@ module TopOptProblems
 
 using JuAFEM
 using StaticArrays
+#using Makie
+using GeometryTypes
+
+import JuAFEM: assemble!
 
 abstract type AbstractTopOptProblem end
 
 include("grids.jl")
 include("metadata.jl")
-include("stiffness_problems_types.jl")
-include("assemble_f.jl")
+include("problem_types.jl")
 include("matrices_and_vectors.jl")
+include("penalties.jl")
+include("assemble.jl")
 include("utils.jl")
+#include("makie.jl")
 
-export PointLoadCantilever, HalfMBB, InpStiffness, StiffnessTopOptProblem, AbstractTopOptProblem, GlobalFEAInfo, ElementFEAInfo, YoungsModulus
+export PointLoadCantilever, HalfMBB, InpStiffness, StiffnessTopOptProblem, AbstractTopOptProblem, GlobalFEAInfo, ElementFEAInfo, YoungsModulus, visualize, assemble, assemble_f!
 
 end # module
