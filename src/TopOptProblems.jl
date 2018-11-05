@@ -18,6 +18,6 @@ include("assemble.jl")
 include("utils.jl")
 #include("makie.jl")
 
-export PointLoadCantilever, HalfMBB, InpStiffness, StiffnessTopOptProblem, AbstractTopOptProblem, GlobalFEAInfo, ElementFEAInfo, YoungsModulus, visualize, assemble, assemble_f!
+export PointLoadCantilever, HalfMBB, LBeam, TieBeam, InpStiffness, StiffnessTopOptProblem, AbstractTopOptProblem, GlobalFEAInfo, ElementFEAInfo, YoungsModulus, assemble, assemble_f!
 
 end # module
