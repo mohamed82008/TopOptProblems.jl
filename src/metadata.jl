@@ -56,8 +56,7 @@ end
 
 function get_node_first_cells(dh)
     node_first_cells = fill((0,0), getnnodes(dh.grid))
-    visited = BitVector(getnnodes(dh.grid))
-    visited .= false
+    visited = falses(getnnodes(dh.grid))
     for cellidx in 1:getncells(dh.grid)
         for (local_node_idx, global_node_idx) in enumerate(dh.grid.cells[cellidx].nodes)
             if !visited[global_node_idx]
@@ -101,8 +100,7 @@ function get_node_dofs(dh::DofHandler)
     interpol_points = ndofs_per_cell(dh)
     _celldofs = fill(0, ndofs_per_cell(dh))
     node_dofs = zeros(Int, ndofspernode, nnodes)
-    visited = BitVector(nnodes)
-    visited .= false
+    visited = falses(nnodes)
     for field in 1:nfields
         field_dim = dh.field_dims[field]
         node_offset = node_field_offset(dh, field)

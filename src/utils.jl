@@ -13,10 +13,8 @@ function find_varind(black, white, ::Type{TI}=Int) where TI
 end
 
 function find_black_and_white(dh)
-    black = BitVector(getncells(dh.grid))
-    white = BitVector(getncells(dh.grid))
-    black .= false
-    white .= false
+    black = falses(getncells(dh.grid))
+    white = falses(getncells(dh.grid))
     if haskey(dh.grid.cellsets, "black")
         for c in grid.cellsets["black"]
             black[c] = true

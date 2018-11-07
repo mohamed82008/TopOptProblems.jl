@@ -90,7 +90,7 @@ function RectilinearGrid(::Type{Val{CellType}}, nels::NTuple{dim,Int}, sizes::NT
     N = nnodes(geoshape)
     M = JuAFEM.nfaces(geoshape)
     ncells = prod(nels)
-    return RectilinearGrid{dim, T, N, M}(grid, nels, sizes, (corner1, corner2), BitVector(ncells), BitVector(ncells), BitVector(ncells))
+    return RectilinearGrid{dim, T, N, M}(grid, nels, sizes, (corner1, corner2), falses(ncells), falses(ncells), falses(ncells))
 end
 
 """

@@ -54,7 +54,7 @@ GlobalFEAInfo{T}() where T = GlobalFEAInfo{T, SparseMatrixCSC{T, Int}, Vector{T}
 
 GlobalFEAInfo(sp::StiffnessTopOptProblem) = GlobalFEAInfo(make_empty_K(sp), make_empty_f(sp))
 
-GlobalFEAInfo(K::AbstractMatrix{T}, f::AbstractVector{T}) where T = GlobalFEAInfo{T, typeof(K), typeof(f)}(K, f)
+#GlobalFEAInfo(K::AbstractMatrix{T}, f::AbstractVector{T}) where T = GlobalFEAInfo{T, typeof(K), typeof(f)}(K, f)
 
 make_empty_K(sp::StiffnessTopOptProblem) = Symmetric(create_sparsity_pattern(sp.ch.dh))
 

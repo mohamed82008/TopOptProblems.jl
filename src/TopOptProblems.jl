@@ -3,7 +3,7 @@ module TopOptProblems
 using JuAFEM
 using StaticArrays
 #using Makie
-using GeometryTypes
+#using GeometryTypes
 
 import JuAFEM: assemble!
 

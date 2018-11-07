@@ -39,7 +39,7 @@ end
 Imports stiffness problem from a .inp file.
 """
 function InpStiffness(filepath_with_ext::AbstractString)
-    problem = JuAFEM.extract_inp(filepath_with_ext)
+    problem = InpParser.extract_inp(filepath_with_ext)
     return InpStiffness(problem)
 end
 function InpStiffness(problem::JuAFEM.InpContent)
@@ -431,8 +431,8 @@ function RectilinearTopology(b, topology = ones(getncells(getdh(b).grid)))
     end
     new_topology = zeros(prod(nels))
     for (i, cell) in enumerate(CellIterator(getdh(b).grid))
-        sub = Int.(round.((cell.coords[1]...))) .+ (1, 1)
-        ind = sub2ind(nels, sub...)
+        sub = Int.(round.((cell.coords[1]...,))) .+ (1, 1)
+        ind = sub2ind(nels, sub...,)
         new_topology[ind] = topology[i]
     end
     return reshape(new_topology, nels)'
