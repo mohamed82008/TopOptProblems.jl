@@ -1,7 +1,6 @@
 module TopOptProblems
 
-using JuAFEM
-using StaticArrays
+using JuAFEM, StaticArrays, LinearAlgebra, SparseArrays
 #using Makie
 #using GeometryTypes
 

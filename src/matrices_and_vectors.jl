@@ -21,7 +21,7 @@ end
 
 function ElementFEAInfo(sp, quad_order=2, ::Type{Val{mat_type}}=Val{:Static}) where {mat_type} 
     Kes, weights, dloads, cellvalues, facevalues = make_Kes_and_fes(sp, quad_order, Val{mat_type})
-    fixedload = full(make_cload(sp))
+    fixedload = Vector(make_cload(sp))
     assemble_f!(fixedload, sp, dloads)
     cellvolumes = get_cell_volumes(sp, cellvalues)
     ElementFEAInfo(Kes, weights, fixedload, cellvolumes, cellvalues, facevalues, sp.metadata)
@@ -256,7 +256,7 @@ function _make_Kes_and_weights(dh::DofHandler{dim, N, T}, ::Type{Val{mat_type}},
         
         Ke_e = zeros(T, dim, dim)
         fe = zeros(T, Kesize)
-        Ke_0 = Matrix{T}(Kesize, Kesize)
+        Ke_0 = Matrix{T}(undef, Kesize, Kesize)
         celliteratortype = CellIterator{typeof(dh).parameters...}
         _celliterator::celliteratortype = CellIterator(dh)
         for (k, cell) in enumerate(_celliterator)

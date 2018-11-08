@@ -24,7 +24,7 @@ function assemble!(globalinfo::GlobalFEAInfo{T}, problem::StiffnessTopOptProblem
     end
 
     global_dofs = zeros(Int, ndofs_per_cell(dh))
-    fe = zeros(fes[1])
+    fe = zeros(typeof(fes[1]))
     Ke = zeros(T, size(Kes[1]))
 
     celliteratortype = CellIterator{typeof(dh).parameters...}
