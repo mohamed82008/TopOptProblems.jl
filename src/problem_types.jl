@@ -26,7 +26,7 @@ getfacesets(p::StiffnessTopOptProblem{dim, T}) where {dim, T} = Dict{String, Tup
 Stiffness problem imported from a .inp file.
 """
 struct InpStiffness{dim, N, TF, M, TI, GO} <: StiffnessTopOptProblem{dim, TF}
-    inp_content::JuAFEM.InpContent{dim, TF, N, TI}
+    inp_content::InpParser.InpContent{dim, TF, N, TI}
     geom_order::Type{Val{GO}}
     ch::ConstraintHandler{DofHandler{dim, N, TF, M}, TF}
     black::BitVector
@@ -42,8 +42,8 @@ function InpStiffness(filepath_with_ext::AbstractString)
     problem = InpParser.extract_inp(filepath_with_ext)
     return InpStiffness(problem)
 end
-function InpStiffness(problem::JuAFEM.InpContent)
-    ch = JuAFEM.inp_to_juafem(problem)
+function InpStiffness(problem::InpParser.InpContent)
+    ch = InpParser.inp_to_juafem(problem)
     black, white = find_black_and_white(ch.dh)
     varind = find_varind(black, white)
     metadata = Metadata(ch.dh)
