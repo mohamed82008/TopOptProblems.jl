@@ -1,11 +1,11 @@
-struct Metadata
-    cell_dofs::Matrix{Int}
-    dof_cells::Vector{Tuple{Int,Int}}
-    dof_cells_offset::Vector{Int}
-    #node_first_cells::Vector{Tuple{Int,Int}}
-    node_cells::Vector{Tuple{Int,Int}}
-    node_cells_offset::Vector{Int}
-    node_dofs::Matrix{Int}
+struct Metadata{TTupleVec<:AbstractVector{Tuple{Int,Int}}, TInds<:AbstractVector{Int}, TDofs<:AbstractMatrix{Int}}
+    cell_dofs::TDofs
+    dof_cells::TTupleVec
+    dof_cells_offset::TInds
+    #node_first_cells::TTupleVec
+    node_cells::TTupleVec
+    node_cells_offset::TInds
+    node_dofs::TDofs
 end
 
 function Metadata(dh::DofHandler{dim}) where dim

@@ -1,13 +1,13 @@
 const RectilinearPointLoad{dim, T, N, M} = Union{PointLoadCantilever{dim, T, N, M}, HalfMBB{dim, T, N, M}, LBeam{T, N, M}}
 
-struct ElementFEAInfo{dim, T, TK<:AbstractMatrix{T}, Tf<:AbstractVector{T}, TKes<:AbstractVector{TK}, Tfes<:AbstractVector{Tf}, Tcload<:AbstractVector{T}, refshape, TCV<:CellValues{dim, T, refshape}, dimless1, TFV<:FaceValues{dimless1, T, refshape}}
+struct ElementFEAInfo{dim, T, TK<:AbstractMatrix{T}, Tf<:AbstractVector{T}, TKes<:AbstractVector{TK}, Tfes<:AbstractVector{Tf}, Tcload<:AbstractVector{T}, refshape, TCV<:CellValues{dim, T, refshape}, dimless1, TFV<:FaceValues{dimless1, T, refshape}, TMeta<:Metadata}
     Kes::TKes
     fes::Tfes
     fixedload::Tcload
     cellvolumes::Tcload
     cellvalues::TCV
     facevalues::TFV
-    metadata::Metadata
+    metadata::TMeta
 end
 #=
 function ElementFEAInfo(sp::RectilinearPointLoad{dim, T}, quad_order=2, ::Type{Val{mat_type}}=Val{:Static}) where {dim, T, mat_type}

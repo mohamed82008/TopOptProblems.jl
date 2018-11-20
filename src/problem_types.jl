@@ -4,7 +4,7 @@ Abstract stiffness topology optimization problem. All subtypes must have the fol
     ch::ConstraintHandler
     black::BitVector
     white::BitVector
-    varind::Vector{Int}
+    varind::AbstractVector{Int}
     metadata::Metadata
 """
 abstract type StiffnessTopOptProblem{dim, T} <: AbstractTopOptProblem end
@@ -25,14 +25,14 @@ getfacesets(p::StiffnessTopOptProblem{dim, T}) where {dim, T} = Dict{String, Tup
 """
 Stiffness problem imported from a .inp file.
 """
-struct InpStiffness{dim, N, TF, M, TI, GO} <: StiffnessTopOptProblem{dim, TF}
+struct InpStiffness{dim, N, TF, M, TI, GO, TInds<:AbstractVector{TI}, TMeta<:Metadata} <: StiffnessTopOptProblem{dim, TF}
     inp_content::InpParser.InpContent{dim, TF, N, TI}
     geom_order::Type{Val{GO}}
     ch::ConstraintHandler{DofHandler{dim, N, TF, M}, TF}
     black::BitVector
     white::BitVector
-    varind::Vector{TI}
-    metadata::Metadata
+    varind::TInds
+    metadata::TMeta
 end
 
 """
@@ -120,7 +120,7 @@ force = 1.0;
 problem = PointLoadCantilever(nels, sizes, E, ν, force)
 ```
 """
-struct PointLoadCantilever{dim, T, N, M} <: StiffnessTopOptProblem{dim, T}
+struct PointLoadCantilever{dim, T, N, M, TInds<:AbstractVector{Int}, TMeta<:Metadata} <: StiffnessTopOptProblem{dim, T}
     rect_grid::RectilinearGrid{dim, T, N, M}
     E::T
     ν::T
@@ -129,8 +129,8 @@ struct PointLoadCantilever{dim, T, N, M} <: StiffnessTopOptProblem{dim, T}
     force_dof::Int
     black::BitVector
     white::BitVector
-    varind::Vector{Int}
-    metadata::Metadata
+    varind::TInds
+    metadata::TMeta
 end
 
 function PointLoadCantilever(::Type{Val{CellType}}, nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, force) where {dim, CellType}
@@ -190,7 +190,7 @@ function PointLoadCantilever(::Type{Val{CellType}}, nels::NTuple{dim,Int}, sizes
     black, white = find_black_and_white(dh)
     varind = find_varind(black, white)
     
-    return PointLoadCantilever{dim, T, N, M}(rect_grid, E, ν, ch, force, force_dof, black, white, varind, metadata)
+    return PointLoadCantilever(rect_grid, E, ν, ch, force, force_dof, black, white, varind, metadata)
 end
 
 """
@@ -254,7 +254,7 @@ force = -1.0;
 problem = HalfMBB(nels, sizes, E, ν, force)
 ```
 """
-struct HalfMBB{dim, T, N, M} <: StiffnessTopOptProblem{dim, T}
+struct HalfMBB{dim, T, N, M, TInds<:AbstractVector{Int}, TMeta<:Metadata} <: StiffnessTopOptProblem{dim, T}
     rect_grid::RectilinearGrid{dim, T, N, M}
     E::T
     ν::T
@@ -263,8 +263,8 @@ struct HalfMBB{dim, T, N, M} <: StiffnessTopOptProblem{dim, T}
     force_dof::Int
     black::BitVector
     white::BitVector
-    varind::Vector{Int}
-    metadata::Metadata
+    varind::TInds
+    metadata::TMeta
 end
 function HalfMBB(::Type{Val{CellType}}, nels::NTuple{dim,Int}, sizes::NTuple{dim}, E, ν, force) where {dim, CellType}
     _T = promote_type(eltype(sizes), typeof(E), typeof(ν), typeof(force))
@@ -328,7 +328,7 @@ function HalfMBB(::Type{Val{CellType}}, nels::NTuple{dim,Int}, sizes::NTuple{dim
     black, white = find_black_and_white(dh)
     varind = find_varind(black, white)
 
-    return HalfMBB{dim, T, N, M}(rect_grid, E, ν, ch, force, force_dof, black, white, varind, metadata)
+    return HalfMBB(rect_grid, E, ν, ch, force, force_dof, black, white, varind, metadata)
 end
 
 nnodespercell(p::Union{PointLoadCantilever, HalfMBB}) = nnodespercell(p.rect_grid)
@@ -354,7 +354,7 @@ end
                                 force
 ```
 """
-struct LBeam{T, N, M} <: StiffnessTopOptProblem{2, T}
+struct LBeam{T, N, M, TInds<:AbstractVector{Int}, TMeta<:Metadata} <: StiffnessTopOptProblem{2, T}
     E::T
     ν::T
     ch::ConstraintHandler{DofHandler{2, N, T, M}, T}
@@ -362,8 +362,8 @@ struct LBeam{T, N, M} <: StiffnessTopOptProblem{2, T}
     force_dof::Int
     black::BitVector
     white::BitVector
-    varind::Vector{Int}
-    metadata::Metadata
+    varind::TInds
+    metadata::TMeta
 end
 function LBeam(::Type{Val{CellType}}, ::Type{T}=Float64; length = 100, height = 100, upperslab = 50, lowerslab = 50, E = 1.0, ν = 0.3, force = 1.0) where {T, CellType}
     # Create displacement field u
@@ -396,11 +396,9 @@ function LBeam(::Type{Val{CellType}}, ::Type{T}=Float64; length = 100, height = 
     black, white = find_black_and_white(dh)
     varind = find_varind(black, white)
 
-    if CellType === :Linear
-        return LBeam{T, 4, 4}(E, ν, ch, force, force_dof, black, white, varind, metadata)
-    else
-        return LBeam{T, 9, 4}(E, ν, ch, force, force_dof, black, white, varind, metadata)
-    end
+    TInds = typeof(varind)
+    TMeta = typeof(metadata)
+    return LBeam(E, ν, ch, force, force_dof, black, white, varind, metadata)
 end
 
 function boundingbox(grid::JuAFEM.Grid{dim}) where dim
@@ -464,15 +462,15 @@ end
                                                               1 f
 ```
 """
-struct TieBeam{T, N, M} <: StiffnessTopOptProblem{2, T}
+struct TieBeam{T, N, M, TInds<:AbstractVector{Int}, TMeta<:Metadata} <: StiffnessTopOptProblem{2, T}
     E::T
     ν::T
     force::T
     ch::ConstraintHandler{DofHandler{2, N, T, M}, T}
     black::BitVector
     white::BitVector
-    varind::Vector{Int}
-    metadata::Metadata
+    varind::TInds
+    metadata::TMeta
 end
 function TieBeam(::Type{Val{CellType}}, ::Type{T}=Float64, refine = 1, force=T(1); E=T(1), ν=T(0)) where {T, CellType}
     grid = TieBeamGrid(Val{CellType}, T, refine)
@@ -500,11 +498,7 @@ function TieBeam(::Type{Val{CellType}}, ::Type{T}=Float64, refine = 1, force=T(1
     black, white = find_black_and_white(dh)
     varind = find_varind(black, white)
 
-    if CellType === :Linear
-        return TieBeam{T, 4, 4}(E, ν, force, ch, black, white, varind, metadata)
-    else
-        return TieBeam{T, 9, 4}(E, ν, force, ch, black, white, varind, metadata)
-    end
+    return TieBeam(E, ν, force, ch, black, white, varind, metadata)
 end
 
 getdim(::TieBeam) = 2
