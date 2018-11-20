@@ -1,6 +1,6 @@
 module TopOptProblems
 
-using JuAFEM, StaticArrays, LinearAlgebra, SparseArrays, InpParser
+using JuAFEM, StaticArrays, LinearAlgebra, SparseArrays, InpParser, Setfield
 #using Makie
 #using GeometryTypes
 

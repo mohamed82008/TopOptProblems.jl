@@ -231,7 +231,7 @@ function _make_Kes_and_weights(dh::DofHandler{dim, N, T}, ::Type{Val{mat_type}},
     if !(T === BigFloat)
         if mat_type === :Static || mat_type === :SMatrix
             MatrixType = SMatrix{Kesize, Kesize, T, Kesize^2}
-            VectorType = MVector{Kesize, T}
+            VectorType = SVector{Kesize, T}
         elseif mat_type === :MMatrix
             MatrixType = MMatrix{Kesize, Kesize, T, Kesize^2}
             VectorType = MVector{Kesize, T}
@@ -261,11 +261,7 @@ function _make_Kes_and_weights(dh::DofHandler{dim, N, T}, ::Type{Val{mat_type}},
         _celliterator::celliteratortype = CellIterator(dh)
         for (k, cell) in enumerate(_celliterator)
             Ke_0 .= 0
-            try
-                reinit!(cellvalues, cell)
-            catch
-                @show cell.coords, cell.nodes, cell.current_cellid[]
-            end
+            reinit!(cellvalues, cell)
             fe = weights[k]
             for q_point in 1:getnquadpoints(cellvalues)
                 dΩ = getdetJdV(cellvalues, q_point)
@@ -273,7 +269,7 @@ function _make_Kes_and_weights(dh::DofHandler{dim, N, T}, ::Type{Val{mat_type}},
                     ∇ϕb = shape_gradient(cellvalues, q_point, b)
                     ϕb = shape_value(cellvalues, q_point, b)
                     for d2 in 1:dim
-                        fe[(b-1)*dim + d2] += ϕb * body_force[d2] * dΩ
+                        fe = @set fe[(b-1)*dim + d2] += ϕb * body_force[d2] * dΩ
                         for a in 1:n_basefuncs
                             ∇ϕa = shape_gradient(cellvalues, q_point, a)
                             Ke_e .= dotdot(∇ϕa, C, ∇ϕb) * dΩ
@@ -286,6 +282,7 @@ function _make_Kes_and_weights(dh::DofHandler{dim, N, T}, ::Type{Val{mat_type}},
                     end
                 end
             end
+            weights[k] = fe
             if MatrixType <: SizedMatrix # Work around because full constructor errors
                 push!(Kes, Symmetric(SizedMatrix{Kesize,Kesize,T}(Ke_0)))
             else
@@ -313,7 +310,6 @@ function _make_Kes_and_weights(dh::DofHandler{dim, N, T}, ::Type{Val{mat_type}},
                     ∇ϕb = shape_gradient(cellvalues, q_point, b)
                     ϕb = shape_value(cellvalues, q_point, b)
                     for d2 in 1:dim
-                        # Force business
                         fe[(b-1)*dim + d2] += ϕb * body_force[d2] * dΩ
                         for a in 1:n_basefuncs
                             ∇ϕa = shape_gradient(cellvalues, q_point, a)
@@ -338,7 +334,11 @@ function _make_dloads(fes, problem, facevalues)
     T = floattype(problem)
     dloads = deepcopy(fes)
     for i in 1:length(dloads)
-        dloads[i] .= 0
+        if eltype(dloads) <: SArray
+            dloads[i] = zero(eltype(dloads))
+        else
+            dloads[i] .= 0
+        end
     end
     pressuredict = getpressuredict(problem)
     dh = getdh(problem)
@@ -360,10 +360,15 @@ function _make_dloads(fes, problem, facevalues)
                 for i in 1:n_basefuncs
                     ϕ = shape_value(facevalues, q_point, i) # Shape function value
                     for d = 1:dim
-                        fe[(i-1)*dim + d] += ϕ * t * normal[d] * dΓ
+                        if fe isa SArray
+                            fe = @set fe[(i-1)*dim + d] += ϕ * t * normal[d] * dΓ
+                        else
+                            fe[(i-1)*dim + d] += ϕ * t * normal[d] * dΓ
+                        end
                     end
                 end
             end
+            dloads[cellid] = fe
         end
     end
     
