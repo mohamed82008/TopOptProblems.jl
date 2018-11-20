@@ -261,16 +261,3 @@ function make_cload(problem)
     end
     return sparsevec(inds, vals, ndofs(dh))
 end
-
-for T in (ElementFEAInfo, Metadata)
-    @eval getfieldnames(::Type{<:$T}) = $(Tuple(fieldnames(T)))
-end
-@eval cufieldnames(::Type{<:ElementFEAInfo}) = $(Tuple(setdiff(fieldnames(ElementFEAInfo), [:cellvalues, :facevalues])))
-cufieldnames(::Type{<:Metadata}) = getfieldnames(Metadata)
-_cu(s::T, f, fn) where {T} = fn ∈ cufieldnames(T) ? (f isa AbstractArray ? CuArray(f) : cu(f)) : f
-
-for T in (ElementFEAInfo, Metadata)
-    @eval begin
-        CuArrays.cu(s::$T) = $T(_cu.((s,), getfield.((s,), getfieldnames($T)), getfieldnames($T))...)
-    end
-end
