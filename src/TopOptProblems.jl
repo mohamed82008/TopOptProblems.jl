@@ -1,6 +1,7 @@
 module TopOptProblems
 
-using JuAFEM, StaticArrays, LinearAlgebra, SparseArrays, InpParser, Setfield, CuArrays
+using JuAFEM, StaticArrays, LinearAlgebra, SparseArrays, InpParser, Setfield, CuArrays, CUDAnative
+using CUDAdrv: CUDAdrv
 #using Makie
 #using GeometryTypes
 
@@ -8,6 +9,7 @@ import JuAFEM: assemble!
 
 abstract type AbstractTopOptProblem end
 
+include("gpu_utils.jl")
 include("grids.jl")
 include("metadata.jl")
 include("problem_types.jl")

@@ -68,21 +68,35 @@ function assemble!(globalinfo::GlobalFEAInfo{T}, problem::StiffnessTopOptProblem
 end
 
 function assemble_f(problem::StiffnessTopOptProblem{dim,T}, elementinfo::ElementFEAInfo{dim, T}, vars::AbstractVector{T}, penalty, xmin = T(1)/1000) where {dim, T}
-    f = zeros(T, ndofs(problem.ch.dh))
+    if vars isa CuArray
+        f = zeros(typeof(vars), ndofs(problem.ch.dh))
+    else
+        f = zeros(T, ndofs(problem.ch.dh))
+    end
     assemble_f!(f, problem, elementinfo, vars, penalty, xmin)
     return f
 end
 
-function assemble_f!(f::AbstractVector, problem::StiffnessTopOptProblem, elementinfo::ElementFEAInfo, vars::AbstractVector, penalty, xmin)
-    black = problem.black
-    white = problem.white
-    varind = problem.varind
+function assemble_f!(f::AbstractVector, problem::StiffnessTopOptProblem, 
+        elementinfo::ElementFEAInfo, vars::AbstractVector, penalty, xmin)
+    black = elementinfo.black
+    white = elementinfo.white
+    varind = elementinfo.varind
     fes = elementinfo.fes
 
-    f .= elementinfo.fixedload
-    dof_cells = problem.metadata.dof_cells
-    dof_cells_offset = problem.metadata.dof_cells_offset
-    for dofidx in 1:ndofs(problem.ch.dh)
+    dof_cells = elementinfo.metadata.dof_cells
+    dof_cells_offset = elementinfo.metadata.dof_cells_offset
+
+    update_f!(f, fes, elementinfo.fixedload, dof_cells_offset, dof_cells, black, 
+        white, penalty, vars, varind, xmin)
+    return f
+end
+
+function update_f!(f::Vector, fes, fixedload, dof_cells_offset, dof_cells, black, 
+    white, penalty, vars, varind, xmin)
+
+    @inbounds for dofidx in 1:ndofs(problem.ch.dh)
+        f[dofidx] = fixedload[dofidx]
         r = dof_cells_offset[dofidx] : dof_cells_offset[dofidx+1]-1
         for i in r
             cellidx, localidx = dof_cells[i]
@@ -97,19 +111,83 @@ function assemble_f!(f::AbstractVector, problem::StiffnessTopOptProblem, element
             end
         end
     end
-    return f
+
+    return
+end
+
+function update_f!(f::CuVector{T}, fes, fixedload, dof_cells_offset, dof_cells, black, 
+    white, penalty, vars, varind, xmin) where {T}
+
+    args = (f, fes, fixedload, dof_cells_offset, dof_cells, black, 
+    white, penalty, vars, varind, xmin, length(f))
+    callkernel(dev, assemble_kernel1, args)
+    CUDAdrv.synchronize(ctx)
+end
+
+function assemble_kernel1(f, fes, fixedload, dof_cells_offset, dof_cells, black, 
+    white, penalty, vars, varind, xmin, ndofs)
+
+    dofidx = @thread_global_index()
+    offset = @total_threads()
+
+    while dofidx <= ndofs
+        f[dofidx] = fixedload[dofidx]
+        r = dof_cells_offset[dofidx] : dof_cells_offset[dofidx+1]-1
+        for i in r
+            cellidx, localidx = dof_cells[i]
+            if black[cellidx]
+                f[dofidx] += fes[cellidx][localidx]
+            elseif white[cellidx]
+                px = xmin
+                f[dofidx] += px * fes[cellidx][localidx]                
+            else
+                px = density(penalty(vars[varind[cellidx]]), xmin)
+                f[dofidx] += px * fes[cellidx][localidx]                
+            end
+        end
+    end
+
+    return
 end
 
 function assemble_f!(f::AbstractVector, problem, dloads)
     metadata = problem.metadata
     dof_cells = metadata.dof_cells
     dof_cells_offset = metadata.dof_cells_offset
-    for dofidx in 1:ndofs(problem.ch.dh)
+    update_f!(f, dof_cells_offset, dof_cells, dloads)
+    return f
+end
+
+function update_f!(f::Vector, dof_cells_offset, dof_cells, dloads)
+    for dofidx in 1:length(f)
         r = dof_cells_offset[dofidx] : dof_cells_offset[dofidx+1]-1
         for i in r
             cellidx, localidx = dof_cells[i]
             f[dofidx] += dloads[cellidx][localidx]
         end
     end
-    return f
+    return
 end
+
+#=
+function update_f!(f::CuVector, dof_cells_offset, dof_cells, dloads)
+    args = (f, dof_cells_offset, dof_cells, dloads)
+    callkernel(dev, assemble_kernel2, args)
+    CUDAdrv.synchronize(ctx)
+
+    return
+end
+
+function assemble_kernel2(f, dof_cells_offset, dof_cells, dloads)
+    i = thread_global_index()
+    offset = total_threads()
+    @inbounds while i <= length(f)
+        r = dof_cells_offset[i] : dof_cells_offset[i+1]-1
+        for i in r
+            cellidx, localidx = dof_cells[i]
+            f[i] += dloads[cellidx][localidx]
+        end
+    end
+    return
+end
+=#
