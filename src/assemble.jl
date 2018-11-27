@@ -180,8 +180,8 @@ function update_f!(f::CuVector, dof_cells_offset, dof_cells, dloads)
 end
 
 function assemble_kernel2(f, dof_cells_offset, dof_cells, dloads)
-    i = thread_global_index()
-    offset = total_threads()
+    i = @thread_global_index()
+    offset = @total_threads()
     @inbounds while i <= length(f)
         r = dof_cells_offset[i] : dof_cells_offset[i+1]-1
         for i in r
