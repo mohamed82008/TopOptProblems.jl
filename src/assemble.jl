@@ -95,7 +95,7 @@ end
 function update_f!(f::Vector, fes, fixedload, dof_cells_offset, dof_cells, black, 
     white, penalty, vars, varind, xmin)
 
-    @inbounds for dofidx in 1:ndofs(problem.ch.dh)
+    @inbounds for dofidx in 1:length(f)
         f[dofidx] = fixedload[dofidx]
         r = dof_cells_offset[dofidx] : dof_cells_offset[dofidx+1]-1
         for i in r
@@ -145,6 +145,7 @@ function assemble_kernel1(f, fes, fixedload, dof_cells_offset, dof_cells, black,
                 f[dofidx] += px * fes[cellidx][localidx]                
             end
         end
+        dofidx += offset
     end
 
     return
@@ -187,6 +188,7 @@ function assemble_kernel2(f, dof_cells_offset, dof_cells, dloads)
             cellidx, localidx = dof_cells[i]
             f[i] += dloads[cellidx][localidx]
         end
+        i += offset
     end
     return
 end

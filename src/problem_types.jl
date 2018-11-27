@@ -120,11 +120,11 @@ force = 1.0;
 problem = PointLoadCantilever(nels, sizes, E, ν, force)
 ```
 """
-struct PointLoadCantilever{dim, T, N, M, TInds<:AbstractVector{Int}, TMeta<:Metadata} <: StiffnessTopOptProblem{dim, T}
+struct PointLoadCantilever{dim, T, N, M, TInds<:AbstractVector{Int}, TMeta<:Metadata, CH<:ConstraintHandler{DofHandler{dim, N, T, M}, T}} <: StiffnessTopOptProblem{dim, T}
     rect_grid::RectilinearGrid{dim, T, N, M}
     E::T
     ν::T
-    ch::ConstraintHandler{DofHandler{dim, N, T, M}, T}
+    ch::CH
     force::T
     force_dof::Int
     black::BitVector
@@ -254,11 +254,11 @@ force = -1.0;
 problem = HalfMBB(nels, sizes, E, ν, force)
 ```
 """
-struct HalfMBB{dim, T, N, M, TInds<:AbstractVector{Int}, TMeta<:Metadata} <: StiffnessTopOptProblem{dim, T}
+struct HalfMBB{dim, T, N, M, TInds<:AbstractVector{Int}, TMeta<:Metadata, CH<:ConstraintHandler{DofHandler{dim, N, T, M}, T}} <: StiffnessTopOptProblem{dim, T}
     rect_grid::RectilinearGrid{dim, T, N, M}
     E::T
     ν::T
-    ch::ConstraintHandler{DofHandler{dim, N, T, M}, T}
+    ch::CH
     force::T
     force_dof::Int
     black::BitVector
@@ -354,10 +354,10 @@ end
                                 force
 ```
 """
-struct LBeam{T, N, M, TInds<:AbstractVector{Int}, TMeta<:Metadata} <: StiffnessTopOptProblem{2, T}
+struct LBeam{T, N, M, TInds<:AbstractVector{Int}, TMeta<:Metadata, CH<:ConstraintHandler{DofHandler{2, N, T, M}, T}} <: StiffnessTopOptProblem{2, T}
     E::T
     ν::T
-    ch::ConstraintHandler{DofHandler{2, N, T, M}, T}
+    ch::CH
     force::T
     force_dof::Int
     black::BitVector
@@ -462,11 +462,11 @@ end
                                                               1 f
 ```
 """
-struct TieBeam{T, N, M, TInds<:AbstractVector{Int}, TMeta<:Metadata} <: StiffnessTopOptProblem{2, T}
+struct TieBeam{T, N, M, TInds<:AbstractVector{Int}, TMeta<:Metadata, CH<:ConstraintHandler{DofHandler{2, N, T, M}, T}} <: StiffnessTopOptProblem{2, T}
     E::T
     ν::T
     force::T
-    ch::ConstraintHandler{DofHandler{2, N, T, M}, T}
+    ch::CH
     black::BitVector
     white::BitVector
     varind::TInds
