@@ -1,6 +1,6 @@
 const RectilinearPointLoad{dim, T, N, M} = Union{PointLoadCantilever{dim, T, N, M}, HalfMBB{dim, T, N, M}, LBeam{T, N, M}}
 
-struct ElementFEAInfo{dim, T, TKe<:AbstractMatrix{T}, Tfe<:AbstractVector{T}, TKes<:AbstractVector{TKe}, Tfes<:AbstractVector{Tfe}, Tcload<:AbstractVector{T}, refshape, TCV<:CellValues{dim, T, refshape}, dimless1, TFV<:FaceValues{dimless1, T, refshape}, TMeta<:Metadata, TBoolVec<:AbstractVector, TIndVec<:AbstractVector{Int}}
+struct ElementFEAInfo{dim, T, TKe<:AbstractMatrix{T}, Tfe<:AbstractVector{T}, TKes<:AbstractVector{TKe}, Tfes<:AbstractVector{Tfe}, Tcload<:AbstractVector{T}, refshape, TCV<:CellValues{dim, T, refshape}, dimless1, TFV<:FaceValues{dimless1, T, refshape}, TMeta<:Metadata, TBoolVec<:AbstractVector, TIndVec<:AbstractVector{Int}, TCells}
     Kes::TKes
     fes::Tfes
     fixedload::Tcload
@@ -11,13 +11,15 @@ struct ElementFEAInfo{dim, T, TKe<:AbstractMatrix{T}, Tfe<:AbstractVector{T}, TK
     black::TBoolVec
     white::TBoolVec
     varind::TIndVec
+    cells::TCells
 end
 function ElementFEAInfo(sp, quad_order=2, ::Type{Val{mat_type}}=Val{:Static}) where {mat_type} 
     Kes, weights, dloads, cellvalues, facevalues = make_Kes_and_fes(sp, quad_order, Val{mat_type})
     fixedload = Vector(make_cload(sp))
     assemble_f!(fixedload, sp, dloads)
     cellvolumes = get_cell_volumes(sp, cellvalues)
-    ElementFEAInfo(Kes, weights, fixedload, cellvolumes, cellvalues, facevalues, sp.metadata, sp.black, sp.white, sp.varind)
+    cells = sp.ch.dh.grid.cells
+    ElementFEAInfo(Kes, weights, fixedload, cellvolumes, cellvalues, facevalues, sp.metadata, sp.black, sp.white, sp.varind, cells)
 end
 function get_cell_volumes(sp::StiffnessTopOptProblem{dim, T}, cellvalues) where {dim, T}
     dh = sp.ch.dh
@@ -123,8 +125,8 @@ function _make_Kes_and_weights(dh::DofHandler{dim, N, T}, ::Type{Val{mat_type}},
         Ke_e = zeros(T, dim, dim)
         fe = zeros(T, Kesize)
         Ke_0 = Matrix{T}(undef, Kesize, Kesize)
-        _celliterator = CellIterator(dh)
-        for (k, cell) in enumerate(_celliterator)
+        celliterator = CellIterator(dh)
+        for (k, cell) in enumerate(celliterator)
             Ke_0 .= 0
             reinit!(cellvalues, cell)
             fe = weights[k]
@@ -164,8 +166,8 @@ function _make_Kes_and_weights(dh::DofHandler{dim, N, T}, ::Type{Val{mat_type}},
     
         Ke_e = zeros(T, dim, dim)
         
-        _celliterator = CellIterator(dh)
-        for (k, cell) in enumerate(_celliterator)
+        celliterator = CellIterator(dh)
+        for (k, cell) in enumerate(celliterator)
             reinit!(cellvalues, cell)
             fe = weights[k]
             for q_point in 1:getnquadpoints(cellvalues)

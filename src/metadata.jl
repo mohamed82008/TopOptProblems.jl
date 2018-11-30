@@ -1,22 +1,19 @@
-struct Metadata{TTupleVec<:AbstractVector{Tuple{Int,Int}}, TInds<:AbstractVector{Int}, TDofs<:AbstractMatrix{Int}}
+struct Metadata{TDofs, TDofCells, TNodeCells}
     cell_dofs::TDofs
-    dof_cells::TTupleVec
-    dof_cells_offset::TInds
+    dof_cells::TDofCells
     #node_first_cells::TTupleVec
-    node_cells::TTupleVec
-    node_cells_offset::TInds
+    node_cells::TNodeCells
     node_dofs::TDofs
 end
 
 function Metadata(dh::DofHandler{dim}) where dim
     cell_dofs = get_cell_dofs_matrix(dh)
-    dof_cells, dof_cells_offset = get_dof_cells_matrix(dh, cell_dofs)
+    dof_cells = get_dof_cells_matrix(dh, cell_dofs)
     #node_first_cells = get_node_first_cells(dh)
-    node_cells, node_cells_offset = get_node_cells(dh)
+    node_cells = get_node_cells(dh)
     node_dofs = get_node_dofs(dh)
 
-    #meta = Metadata(cell_dofs, dof_cells, dof_cells_offset, node_first_cells, node_dofs)
-    meta = Metadata(cell_dofs, dof_cells, dof_cells_offset, node_cells, node_cells_offset, node_dofs)
+    meta = Metadata(cell_dofs, dof_cells, node_cells, node_dofs)
 end
 
 function get_cell_dofs_matrix(dh)
@@ -41,17 +38,7 @@ function get_dof_cells_matrix(dh, cell_dofs)
         end
     end
 
-    dof_cells = Tuple{Int,Int}[]
-    sizehint!(dof_cells, l)
-    dof_cells_offset = Int[1]
-    sizehint!(dof_cells_offset, ndofs(dh)+1)
-
-    for (dofidx, indsincells) in enumerate(dof_cells_vecofvecs)
-        append!(dof_cells, indsincells)
-        push!(dof_cells_offset, length(dof_cells)+1)
-    end
-    
-    dof_cells, dof_cells_offset
+    return RaggedArray(dof_cells_vecofvecs)    
 end
 
 function get_node_first_cells(dh)
@@ -77,18 +64,7 @@ function get_node_cells(dh)
             l += 1
         end
     end
-
-    node_cells = Tuple{Int,Int}[] 
-    node_cells_offset = Int[1]
-    sizehint!(node_cells, l)
-    sizehint!(node_cells_offset, getnnodes(dh.grid) + 1)
-
-    for (nodeidx, indsincells) in enumerate(node_cells_vecofvecs)
-        append!(node_cells, indsincells)
-        push!(node_cells_offset, length(node_cells)+1)
-    end
-
-    return node_cells, node_cells_offset
+    return RaggedArray(node_cells_vecofvecs)
 end
 
 node_field_offset(dh, f) = sum(view(dh.field_dims, 1:f-1))

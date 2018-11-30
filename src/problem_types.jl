@@ -26,6 +26,7 @@ getdh(p::StiffnessTopOptProblem) = p.ch.dh
 getcloaddict(p::StiffnessTopOptProblem{dim, T}) where {dim, T} = Dict{String, Vector{T}}()
 getpressuredict(p::StiffnessTopOptProblem{dim, T}) where {dim, T} = Dict{String, T}()
 getfacesets(p::StiffnessTopOptProblem{dim, T}) where {dim, T} = Dict{String, Tuple{Int, T}}()
+JuAFEM.getncells(problem::StiffnessTopOptProblem) = JuAFEM.getncells(getdh(problem).grid)
 
 """
 Stiffness problem imported from a .inp file.

@@ -15,15 +15,15 @@ const dev = CUDAdrv.device()
 const ctx = CUDAdrv.CuContext(dev)
 
 #include("gpu_utils.jl")
+include("utils.jl")
 include("grids.jl")
 include("metadata.jl")
 include("problem_types.jl")
 include("matrices_and_vectors.jl")
 include("penalties.jl")
 include("assemble.jl")
-include("utils.jl")
 #include("makie.jl")
 
-export PointLoadCantilever, HalfMBB, LBeam, TieBeam, InpStiffness, StiffnessTopOptProblem, AbstractTopOptProblem, GlobalFEAInfo, ElementFEAInfo, YoungsModulus, assemble, assemble_f!
+export PointLoadCantilever, HalfMBB, LBeam, TieBeam, InpStiffness, StiffnessTopOptProblem, AbstractTopOptProblem, GlobalFEAInfo, ElementFEAInfo, YoungsModulus, assemble, assemble_f!, RaggedArray
 
 end # module
