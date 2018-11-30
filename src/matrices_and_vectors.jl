@@ -123,8 +123,7 @@ function _make_Kes_and_weights(dh::DofHandler{dim, N, T}, ::Type{Val{mat_type}},
         Ke_e = zeros(T, dim, dim)
         fe = zeros(T, Kesize)
         Ke_0 = Matrix{T}(undef, Kesize, Kesize)
-        celliteratortype = CellIterator{typeof(dh).parameters...}
-        _celliterator::celliteratortype = CellIterator(dh)
+        _celliterator = CellIterator(dh)
         for (k, cell) in enumerate(_celliterator)
             Ke_0 .= 0
             reinit!(cellvalues, cell)
@@ -165,7 +164,6 @@ function _make_Kes_and_weights(dh::DofHandler{dim, N, T}, ::Type{Val{mat_type}},
     
         Ke_e = zeros(T, dim, dim)
         
-        celliteratortype = CellIterator{typeof(dh).parameters...}
         _celliterator = CellIterator(dh)
         for (k, cell) in enumerate(_celliterator)
             reinit!(cellvalues, cell)

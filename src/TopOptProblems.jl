@@ -1,15 +1,20 @@
 module TopOptProblems
 
-using JuAFEM, StaticArrays, LinearAlgebra, SparseArrays, InpParser, Setfield, CuArrays, CUDAnative
+using JuAFEM, StaticArrays, LinearAlgebra, SparseArrays
+using InpParser, Setfield, CuArrays, CUDAnative, GPUUtils
 using CUDAdrv: CUDAdrv
 #using Makie
 #using GeometryTypes
 
 import JuAFEM: assemble!
+import GPUUtils: whichdevice
 
 abstract type AbstractTopOptProblem end
 
-include("gpu_utils.jl")
+const dev = CUDAdrv.device()
+const ctx = CUDAdrv.CuContext(dev)
+
+#include("gpu_utils.jl")
 include("grids.jl")
 include("metadata.jl")
 include("problem_types.jl")

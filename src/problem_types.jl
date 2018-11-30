@@ -9,6 +9,11 @@ Abstract stiffness topology optimization problem. All subtypes must have the fol
 """
 abstract type StiffnessTopOptProblem{dim, T} <: AbstractTopOptProblem end
 
+whichdevice(p::StiffnessTopOptProblem) = whichdevice(p.ch)
+whichdevice(ch::ConstraintHandler) = whichdevice(ch.dh)
+whichdevice(dh::DofHandler) = whichdevice(dh.grid)
+whichdevice(g::JuAFEM.Grid) = whichdevice(g.cells)
+
 # Fallbacks
 getdim(::StiffnessTopOptProblem{dim, T}) where {dim, T} = dim
 floattype(::StiffnessTopOptProblem{dim, T}) where {dim, T} = T
@@ -120,8 +125,8 @@ force = 1.0;
 problem = PointLoadCantilever(nels, sizes, E, ν, force)
 ```
 """
-struct PointLoadCantilever{dim, T, N, M, TInds<:AbstractVector{Int}, TMeta<:Metadata, CH<:ConstraintHandler{DofHandler{dim, N, T, M}, T}} <: StiffnessTopOptProblem{dim, T}
-    rect_grid::RectilinearGrid{dim, T, N, M}
+struct PointLoadCantilever{dim, T, N, M, TInds<:AbstractVector{Int}, TG <: RectilinearGrid{dim, T, N, M}, TMeta<:Metadata, CH<:ConstraintHandler{<:DofHandler{dim, N, T, M}, T}} <: StiffnessTopOptProblem{dim, T}
+    rect_grid::TG
     E::T
     ν::T
     ch::CH
@@ -254,8 +259,8 @@ force = -1.0;
 problem = HalfMBB(nels, sizes, E, ν, force)
 ```
 """
-struct HalfMBB{dim, T, N, M, TInds<:AbstractVector{Int}, TMeta<:Metadata, CH<:ConstraintHandler{DofHandler{dim, N, T, M}, T}} <: StiffnessTopOptProblem{dim, T}
-    rect_grid::RectilinearGrid{dim, T, N, M}
+struct HalfMBB{dim, T, N, M, TInds<:AbstractVector{Int}, TG<:RectilinearGrid{dim, T, N, M}, TMeta<:Metadata, CH<:ConstraintHandler{<:DofHandler{dim, N, T, M}, T}} <: StiffnessTopOptProblem{dim, T}
+    rect_grid::TG
     E::T
     ν::T
     ch::CH
@@ -354,7 +359,7 @@ end
                                 force
 ```
 """
-struct LBeam{T, N, M, TInds<:AbstractVector{Int}, TMeta<:Metadata, CH<:ConstraintHandler{DofHandler{2, N, T, M}, T}} <: StiffnessTopOptProblem{2, T}
+struct LBeam{T, N, M, TInds<:AbstractVector{Int}, TMeta<:Metadata, CH<:ConstraintHandler{<:DofHandler{2, N, T, M}, T}} <: StiffnessTopOptProblem{2, T}
     E::T
     ν::T
     ch::CH
@@ -462,7 +467,7 @@ end
                                                               1 f
 ```
 """
-struct TieBeam{T, N, M, TInds<:AbstractVector{Int}, TMeta<:Metadata, CH<:ConstraintHandler{DofHandler{2, N, T, M}, T}} <: StiffnessTopOptProblem{2, T}
+struct TieBeam{T, N, M, TInds<:AbstractVector{Int}, TMeta<:Metadata, CH<:ConstraintHandler{<:DofHandler{2, N, T, M}, T}} <: StiffnessTopOptProblem{2, T}
     E::T
     ν::T
     force::T

@@ -48,8 +48,8 @@ Example:
 
 `rectgrid = RectilinearGrid((60,20), (1.0,1.0))`
 """
-struct RectilinearGrid{dim, T, N, M} <: AbstractGrid{dim, T}
-    grid::JuAFEM.Grid{dim, N, T, M}
+struct RectilinearGrid{dim, T, N, M, TG<:JuAFEM.Grid{dim, N, T, M}} <: AbstractGrid{dim, T}
+    grid::TG
     nels::NTuple{dim, Int}
     sizes::NTuple{dim, T}
     corners::NTuple{2, Vec{dim, T}}
@@ -90,7 +90,7 @@ function RectilinearGrid(::Type{Val{CellType}}, nels::NTuple{dim,Int}, sizes::NT
     N = nnodes(geoshape)
     M = JuAFEM.nfaces(geoshape)
     ncells = prod(nels)
-    return RectilinearGrid{dim, T, N, M}(grid, nels, sizes, (corner1, corner2), falses(ncells), falses(ncells), falses(ncells))
+    return RectilinearGrid(grid, nels, sizes, (corner1, corner2), falses(ncells), falses(ncells), falses(ncells))
 end
 
 """
