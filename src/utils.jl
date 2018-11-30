@@ -6,7 +6,7 @@ whichdevice(ra::RaggedArray) = whichdevice(ra.offsets)
 
 function RaggedArray(vv::Vector{Vector{T}}) where T
     offsets = [1; 1 .+ accumulate(+, collect(length(v) for v in vv))]
-    values = zeros(T, offsets[end]-1)
+    values = Vector{T}(undef, offsets[end]-1)
     for (i, v) in enumerate(vv)
         r = offsets[i]:offsets[i+1]-1
         values[r] .= v
@@ -16,7 +16,7 @@ end
 @define_cu(RaggedArray, :offsets, :values)
 
 function Base.getindex(ra::RaggedArray, i)
-    @assert 1 <= j < length(ra.offsets)
+    @assert 1 <= i < length(ra.offsets)
     r = ra.offsets[i]:ra.offsets[i+1]-1
     @assert 1 <= r[1] && r[end] <= length(ra.values)
     return @view ra.values[r]

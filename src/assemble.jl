@@ -117,13 +117,13 @@ end
 function update_f!(f::CuVector{T}, fes, fixedload, dof_cells, black, 
     white, penalty, vars, varind, xmin) where {T}
 
-    args = (f, fes, fixedload, dof_cells, black, 
-    white, penalty, vars, varind, xmin, length(f))
+    args = (f, fes, fixedload, dof_cells.offsets, dof_cells.values, black, 
+        white, penalty, vars, varind, xmin, length(f))
     callkernel(dev, assemble_kernel1, args)
     CUDAdrv.synchronize(ctx)
 end
 
-function assemble_kernel1(f, fes, fixedload, dof_cells, black, 
+function assemble_kernel1(f, fes, fixedload, dof_cells_offsets, dof_cells_values, black, 
     white, penalty, vars, varind, xmin, ndofs)
 
     dofidx = @thread_global_index()
@@ -131,9 +131,9 @@ function assemble_kernel1(f, fes, fixedload, dof_cells, black,
 
     while dofidx <= ndofs
         f[dofidx] = fixedload[dofidx]
-        r = dof_cells.offsets[dofidx] : dof_cells.offsets[dofidx+1]-1
+        r = dof_cells_offsets[dofidx] : dof_cells_offsets[dofidx+1]-1
         for i in r
-            cellidx, localidx = dof_cells.values[i]
+            cellidx, localidx = dof_cells_values[i]
             if black[cellidx]
                 f[dofidx] += fes[cellidx][localidx]
             elseif white[cellidx]
@@ -170,20 +170,20 @@ end
 
 #=
 function update_f!(f::CuVector, dof_cells, dloads)
-    args = (f, dof_cells, dloads)
+    args = (f, dof_cells.offsets, dof_cells.values, dloads)
     callkernel(dev, assemble_kernel2, args)
     CUDAdrv.synchronize(ctx)
 
     return
 end
 
-function assemble_kernel2(f, dof_cells, dloads)
+function assemble_kernel2(f, dof_cells_offsets, dof_cells_values, dloads)
     i = @thread_global_index()
     offset = @total_threads()
     @inbounds while i <= length(f)
-        r = dof_cells.offsets[i] : dof_cells.offsets[i+1]-1
+        r = dof_cells_offsets[i] : dof_cells_offsets[i+1]-1
         for i in r
-            cellidx, localidx = dof_cells.values[i]
+            cellidx, localidx = dof_cells_values[i]
             f[i] += dloads[cellidx][localidx]
         end
         i += offset
