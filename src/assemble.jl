@@ -25,35 +25,28 @@ function assemble!(globalinfo::GlobalFEAInfo{T}, problem::StiffnessTopOptProblem
 
     global_dofs = zeros(Int, ndofs_per_cell(dh))
     fe = zeros(typeof(fes[1]))
-    Ke = zeros(T, size(Kes[1]))
+    Ke = zeros(T, size(rawmatrix(Kes[1])))
 
-    celliteratortype = CellIterator{typeof(dh).parameters...}
-    _celliterator::celliteratortype = CellIterator(dh)
-    for (i,cell) in enumerate(_celliterator)
+    celliterator = CellIterator(dh)
+    for (i,cell) in enumerate(celliterator)
         celldofs!(global_dofs, dh, i)
+        fe = fes[i]
+        if eltype(Kes) <: Symmetric
+            Ke = rawmatrix(Kes[i]).data
+        else
+            Ke = rawmatrix(Kes[i])
+        end
         if black[i]
-            if TK <: Symmetric
-                JuAFEM.assemble!(assembler, global_dofs, Kes[i].data, fes[i])
-            else
-                JuAFEM.assemble!(assembler, global_dofs, Kes[i], fes[i])
-            end
+            JuAFEM.assemble!(assembler, global_dofs, Ke, fe)
         elseif white[i]
             px = xmin
-            fe .= px .* fes[i]
-            if TK <: Symmetric
-                Ke .= px .* Kes[i].data
-            else
-                Ke .= px .* Kes[i]
-            end
+            fe = px * fe
+            Ke = px * Ke
             JuAFEM.assemble!(assembler, global_dofs, Ke, fe)
         else
             px = density(penalty(vars[varind[i]]), xmin)
-            fe .= px .* fes[i]
-            if TK <: Symmetric
-                Ke .= px .* Kes[i].data
-            else
-                Ke .= px .* Kes[i]
-            end
+            fe = px * fe
+            Ke = px * Ke
             JuAFEM.assemble!(assembler, global_dofs, Ke, fe)
         end
     end

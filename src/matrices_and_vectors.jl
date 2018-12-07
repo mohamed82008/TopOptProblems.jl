@@ -1,5 +1,45 @@
 const RectilinearPointLoad{dim, T, N, M} = Union{PointLoadCantilever{dim, T, N, M}, HalfMBB{dim, T, N, M}, LBeam{T, N, M}}
 
+struct ElementMatrix{T, TM <: AbstractMatrix{T}, TMask} <: AbstractMatrix{T}
+    matrix::TM
+    mask::TMask
+    meandiag::T
+end
+ElementMatrix(matrix, mask) = ElementMatrix(matrix, mask, sumdiag(matrix)/size(matrix, 1))
+
+const StaticMatrices{m,T} = Union{StaticMatrix{m,m,T}, Symmetric{T, <:StaticMatrix{m,m,T}}}
+@generated function sumdiag(K::StaticMatrices{m,T}) where {m,T}
+    return reduce((ex1,ex2) -> :($ex1 + $ex2), [:(K[$j,$j]) for j in 1:m])
+end
+
+Base.size(m::ElementMatrix) = size(m.matrix)
+Base.getindex(m::ElementMatrix, i...) = m.matrix[i...]
+
+rawmatrix(m::ElementMatrix) = m.matrix
+rawmatrix(m::Symmetric{T, <:ElementMatrix{T}}) where {T} = Symmetric(m.data.matrix)
+@generated function bcmatrix(m::ElementMatrix{T, TM}) where {dim, T, TM <: StaticMatrix{dim, dim, T}}
+    expr = Expr(:tuple)
+    for j in 1:dim, i in 1:dim
+        if i == j
+            push!(expr.args, :(ifelse(m.mask[$i], m.matrix[$i,$i], m.meandiag)))
+        else
+            push!(expr.args, :(ifelse(m.mask[$i] && m.mask[$j], m.matrix[$i,$j], zero(T))))
+        end
+    end
+    return :($TM($expr))
+end
+@generated function bcmatrix(m::Symmetric{T, <:ElementMatrix{T, TM}}) where {dim, T, TM <: StaticMatrix{dim, dim, T}}
+    expr = Expr(:tuple)
+    for j in 1:dim, i in 1:dim
+        if i == j
+            push!(expr.args, :(ifelse(m.data.mask[$i], m.data.matrix[$i,$i], m.data.meandiag)))
+        else
+            push!(expr.args, :(ifelse(m.data.mask[$i] && m.data.mask[$j], m.data.matrix[$i,$j], zero(T))))
+        end
+    end
+    return :(Symmetric($TM($expr)))
+end
+
 struct ElementFEAInfo{dim, T, TKe<:AbstractMatrix{T}, Tfe<:AbstractVector{T}, TKes<:AbstractVector{TKe}, Tfes<:AbstractVector{Tfe}, Tcload<:AbstractVector{T}, refshape, TCV<:CellValues{dim, T, refshape}, dimless1, TFV<:FaceValues{dimless1, T, refshape}, TMeta<:Metadata, TBoolVec<:AbstractVector, TIndVec<:AbstractVector{Int}, TCells}
     Kes::TKes
     fes::Tfes
@@ -15,12 +55,74 @@ struct ElementFEAInfo{dim, T, TKe<:AbstractMatrix{T}, Tfe<:AbstractVector{T}, TK
 end
 function ElementFEAInfo(sp, quad_order=2, ::Type{Val{mat_type}}=Val{:Static}) where {mat_type} 
     Kes, weights, dloads, cellvalues, facevalues = make_Kes_and_fes(sp, quad_order, Val{mat_type})
+    element_Kes = make_element_Kes(Kes, sp.ch.prescribed_dofs, sp.metadata.dof_cells)
     fixedload = Vector(make_cload(sp))
     assemble_f!(fixedload, sp, dloads)
     cellvolumes = get_cell_volumes(sp, cellvalues)
     cells = sp.ch.dh.grid.cells
-    ElementFEAInfo(Kes, weights, fixedload, cellvolumes, cellvalues, facevalues, sp.metadata, sp.black, sp.white, sp.varind, cells)
+    ElementFEAInfo(element_Kes, weights, fixedload, cellvolumes, cellvalues, facevalues, sp.metadata, sp.black, sp.white, sp.varind, cells)
 end
+function make_element_Kes(Kes::AbstractVector{TMorSymm}, bc_dofs, dof_cells) where {N, T, TM <: StaticMatrix{N, N, T}, TMorSymm <: Union{TM, Symmetric{T, TM}}}
+    fill_matrix = zero(TM)
+    fill_mask = ones(SVector{N, Bool})
+    if TMorSymm <: Symmetric
+        element_Kes = fill(Symmetric(ElementMatrix(fill_matrix, fill_mask)), length(Kes))
+    else
+        element_Kes = fill(ElementMatrix(fill_matrix, fill_mask), length(Kes))
+    end
+    for i in bc_dofs
+        d_cells = dof_cells[i]
+        for c in d_cells
+            (cellid, localdof) = c
+            if TMorSymm <: Symmetric
+                Ke = element_Kes[cellid].data
+            else
+                Ke = element_Kes[cellid]
+            end
+            new_Ke = @set Ke.mask[localdof] = false
+            element_Kes[cellid] = Symmetric(new_Ke)
+        end
+    end
+    for e in 1:length(element_Kes)
+        if eltype(element_Kes) <: Symmetric
+            Ke = element_Kes[e].data
+            matrix = Kes[e].data
+            Ke = @set Ke.matrix = matrix
+            element_Kes[e] = Symmetric(@set Ke.meandiag = sumdiag(Ke.matrix))
+        else
+            Ke = element_Kes[e]
+            matrix = Kes[e]
+            Ke = @set Ke.matrix = matrix
+            element_Kes[e] = @set Ke.meandiag = sumdiag(Ke.matrix)
+        end
+    end
+    element_Kes
+end
+
+function make_element_Kes(Kes::AbstractVector{TM}, bc_dofs, dof_cells) where {T, TM <: AbstractMatrix{T}, TMorSymm <: Union{TM, Symmetric{T, TM}}}
+    N = size(Kes[1], 1)
+    fill_matrix = zero(TM)
+    fill_mask = ones(Bool, N)
+    if TM <: Symmetric
+        element_Kes = [Symmetric(deepcopy(ElementMatrix(fill_matrix, fill_mask))) for i in 1:length(Kes)]
+    else
+        element_Kes = [deepcopy(ElementMatrix(fill_matrix, fill_mask)) for i in 1:length(Kes)]
+    end
+    for i in bc_dofs
+        d_cells = dof_cells[i]
+        for c in d_cells
+            (cellid, localdof) = c
+            if TM <: Symmetric
+                Ke = element_Kes[cellid].data
+            else
+                Ke = element_Kes[cellid]
+            end
+            Ke.mask[localdof] = false
+        end
+    end
+    element_Kes
+end
+
 function get_cell_volumes(sp::StiffnessTopOptProblem{dim, T}, cellvalues) where {dim, T}
     dh = sp.ch.dh
     cellvolumes = zeros(T, getncells(dh.grid))
