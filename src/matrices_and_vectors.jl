@@ -26,7 +26,7 @@ rawmatrix(m::Symmetric{T, <:ElementMatrix{T}}) where {T} = Symmetric(m.data.matr
             push!(expr.args, :(ifelse(m.mask[$i] && m.mask[$j], m.matrix[$i,$j], zero(T))))
         end
     end
-    return :($TM($expr))
+    return :($(Expr(:meta, :inline)); $TM($expr))
 end
 @generated function bcmatrix(m::Symmetric{T, <:ElementMatrix{T, TM}}) where {dim, T, TM <: StaticMatrix{dim, dim, T}}
     expr = Expr(:tuple)
@@ -37,7 +37,7 @@ end
             push!(expr.args, :(ifelse(m.data.mask[$i] && m.data.mask[$j], m.data.matrix[$i,$j], zero(T))))
         end
     end
-    return :(Symmetric($TM($expr)))
+    return :($(Expr(:meta, :inline)); Symmetric($TM($expr)))
 end
 
 struct ElementFEAInfo{dim, T, TKe<:AbstractMatrix{T}, Tfe<:AbstractVector{T}, TKes<:AbstractVector{TKe}, Tfes<:AbstractVector{Tfe}, Tcload<:AbstractVector{T}, refshape, TCV<:CellValues{dim, T, refshape}, dimless1, TFV<:FaceValues{dimless1, T, refshape}, TMeta<:Metadata, TBoolVec<:AbstractVector, TIndVec<:AbstractVector{Int}, TCells}
