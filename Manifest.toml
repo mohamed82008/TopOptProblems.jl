@@ -132,7 +132,7 @@ version = "0.6.0"
 [[GPUUtils]]
 deps = ["CUDAdrv", "CUDAnative", "CuArrays", "GPUArrays", "InteractiveUtils"]
 git-tree-sha1 = "0592a92f3f0d8838a07967678011f1b1e6776fb6"
-repo-rev = "master"
+repo-rev = "cuda_error"
 repo-url = "https://github.com/mohamed82008/GPUUtils.jl"
 uuid = "d52e50ae-f8aa-57b0-8e49-10ef736eb96d"
 version = "0.0.0"
@@ -140,7 +140,7 @@ version = "0.0.0"
 [[InpParser]]
 deps = ["JuAFEM", "SparseArrays", "Test"]
 git-tree-sha1 = "4952174b80d1676888cda72b84c0ab20c6d2bb57"
-repo-rev = "master"
+repo-rev = "cuda_error"
 repo-url = "https://github.com/mohamed82008/InpParser.jl"
 uuid = "9f7911e1-6279-5a0b-bd43-ff189ad07d03"
 version = "0.0.0"
@@ -158,7 +158,7 @@ version = "0.20.0"
 [[JuAFEM]]
 deps = ["LinearAlgebra", "Reexport", "SparseArrays", "Tensors", "WriteVTK"]
 git-tree-sha1 = "28d20367ce159f38842113cea80d9e9694b93e5e"
-repo-rev = "master"
+repo-rev = "cuda_error"
 repo-url = "https://github.com/mohamed82008/JuAFEM.jl"
 uuid = "30d91d44-8115-11e8-1d28-c19a5ac16de8"
 version = "0.2.0"
